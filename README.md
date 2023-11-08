@@ -11,3 +11,7 @@ cat id_ed25519.pub >> ~/.ssh/authorized_keys
 sudo nano /etc/hostname
 sudo nano /etc/hosts
 ```
+
+Install ansible in venv
+Содаем каталоги kubespray-venv и kubespray
+
