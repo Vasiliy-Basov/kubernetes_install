@@ -1,0 +1,6 @@
+---
+- name: Install fly-admin-samba package
+  ansible.builtin.apt:
+    update_cache: true
+    name: fly-admin-samba
+    state: present

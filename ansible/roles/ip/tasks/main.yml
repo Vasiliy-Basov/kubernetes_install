@@ -1,0 +1,6 @@
+---
+- name: Copy resolv.conf
+  ansible.builtin.template:
+    src: resolv.conf.j2 # Достаточно указать имя а не полный путь
+    dest: /etc/resolv.conf
+    mode: 0644

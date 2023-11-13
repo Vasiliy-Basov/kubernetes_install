@@ -1,0 +1,6 @@
+---
+- name: Install fly-admin-ad-client package
+  ansible.builtin.apt:
+    update_cache: true
+    name: fly-admin-ad-client
+    state: present

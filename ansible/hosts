@@ -1,0 +1,19 @@
+sztu-kubms-vt01 ansible_host=10.100.3.14
+sztu-kubws-vt01 ansible_host=10.100.3.15
+sztu-kublbs-vt01 ansible_host=10.100.3.16
+
+[kube_control_plane]
+sztu-kubms-vt01
+
+[etcd]
+sztu-kubms-vt01
+
+[kube_node]
+sztu-kubws-vt01
+
+[load_balancer]
+sztu-kublbs-vt01
+
+[k8s_cluster:children]
+kube_node
+kube_control_plane

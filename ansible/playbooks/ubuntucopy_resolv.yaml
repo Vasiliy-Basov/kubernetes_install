@@ -1,0 +1,7 @@
+---
+- name: Resolv.conf write
+  hosts: all
+  remote_user: master
+  become: true
+  roles:
+    - copy-resolv

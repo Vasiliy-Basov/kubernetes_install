@@ -1,0 +1,6 @@
+---
+- name: Install open-vm-tools package
+  ansible.builtin.apt:
+    update_cache: true
+    name: open-vm-tools
+    state: present

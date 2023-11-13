@@ -1,0 +1,12 @@
+---
+- name: Fly Samba Install
+  hosts: servers
+  remote_user: master
+  become: true
+  roles:
+    - addastrarepo
+    - fly-admin-samba
+    - fly-admin-ad-client
+    - chrony
+    - copy-resolv
+    - vmwaretools

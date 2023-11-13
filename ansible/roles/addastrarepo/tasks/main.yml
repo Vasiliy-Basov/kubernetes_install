@@ -1,0 +1,12 @@
+---
+- name: Add Astra Linux Repository
+  apt_repository:
+    repo: "{{ astra_repo_main }}"
+    state: present
+
+- name: Install aptitude using apt
+  ansible.builtin.apt:
+    name: aptitude
+    state: present
+    update_cache: true
+    force_apt_get: true

@@ -1,0 +1,15 @@
+---
+- name: Install chrony package
+  ansible.builtin.apt:
+    update_cache: true
+    name: chrony
+    state: present
+
+- name: Copy chrony.conf
+  ansible.builtin.template:
+    src: chrony.conf.j2 # Достаточно указать имя а не полный путь
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Reload chrony
