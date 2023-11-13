@@ -48,8 +48,52 @@ sudo systemd-machine-id-setup
 
 # Смена ip
 sudo nano /etc/netplan/00-installer-config.yaml
+sudo chmod 600 /etc/netplan/00-installer-config.yaml
+
+```yaml
+# This is the network config written by 'subiquity'
+network:
+  version: 2
+  ethernets:
+    ens160:
+      dhcp4: false
+      addresses:
+      - 10.100.3.14/24
+      nameservers:
+        addresses: [8.8.8.8, 77.88.8.8]
+        search: []
+      routes:
+      - to: default
+        via: 10.100.3.1
+    ens192:
+      dhcp4: false
+      addresses:
+      - 172.18.7.51/23
+      nameservers:
+        addresses: [172.18.5.207, 172.18.5.208]
+        search: [regions.eais.customs.ru]
+```
+
+# Настройка /etc/hosts
+```text
+127.0.0.1 localhost
+172.18.7.51 sztu-kubms-vt01
+172.18.7.52 sztu-kubws-vt01
+172.18.7.53 sztu-kublbs-vt01
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+```
 
 # настройки сети (dns)
+```bash
 sudo cat /etc/resolv.conf
-
+# Меняем настройки чтобы /etc/resolv.conf управлялся из файла /etc/netplan/00-installer-config.yaml
+sudo unlink /etc/resolv.conf
+sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
+sudo systemctl restart systemd-resolved.service
 ```
