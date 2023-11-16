@@ -1,5 +1,1 @@
 ansible/kubespray-venv
-ansible/kubespray
-ansible/kubespray/inventory/mycluster/inventory/*/artifacts/
-ansible/kubespray/inventory/mycluster/inventory/*/credentials/
-!ansible/kubespray/inventory
