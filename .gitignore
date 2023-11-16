@@ -1,1 +1,6 @@
 ansible/kubespray-venv
+ansible/kubespray/*
+ansible/kubespray/inventory/*/artifacts/
+ansible/kubespray/inventory/*/credentials/
+!ansible/kubespray/inventory/
+
