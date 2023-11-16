@@ -1,18 +1,19 @@
-sztu-kubms-vt01 ansible_host=172.18.7.51
-sztu-kubws-vt01 ansible_host=172.18.7.52
-sztu-kublbs-vt01 ansible_host=172.18.7.53
+[all]
+sztu-kubms-vt01 ansible_host=172.18.7.52
+sztu-kubms-vt02 ansible_host=172.18.7.53
+sztu-kubws-vt01 ansible_host=172.18.7.55
 
 [kube_control_plane]
 sztu-kubms-vt01
+sztu-kubms-vt02
 
 [etcd]
 sztu-kubms-vt01
+sztu-kubms-vt02
+sztu-kubws-vt01
 
 [kube_node]
 sztu-kubws-vt01
-
-[load_balancer]
-sztu-kublbs-vt01
 
 [k8s_cluster:children]
 kube_node
