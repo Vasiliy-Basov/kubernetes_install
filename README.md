@@ -13,7 +13,7 @@ sudo nano /etc/hosts
 ```
 
 ## Install ansible in venv  
-Содаем каталоги kubespray-venv для виртуального окружения и kubespray для проекта
+Создаем каталоги kubespray-venv для виртуального окружения и kubespray для проекта
 ```bash
 sudo apt update
 sudo apt install python3.10-venv
