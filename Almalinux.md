@@ -1,3 +1,39 @@
+# HaProxy Install
+```bash
+sudo dnf update -y
+hostnamectl set-hostname ha-proxy
+# Меняем /etc/hosts
+sudo dnf install nano
+nano /etc/hosts
+sudo dnf info haproxy -y
+sudo dnf install haproxy
+# Проверка
+rpm -qi haproxy
+# Backup config
+sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.bak
+# Disable SELinux
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
+sudo setenforce 0
+# Change config
+# ./haproxy.cfg
+nano /etc/haproxy/haproxy.cfg
+# Проверка
+haproxy -f /etc/haproxy/haproxy.cfg -c
+# В firewalld исходящий трафик обычно разрешен по умолчанию
+# Открываем входящий
+sudo firewall-cmd --add-port=8399/tcp --permanent
+sudo firewall-cmd --add-port=2379/tcp --permanent
+sudo firewall-cmd --add-port=6443/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+# Prerequisutes
+- 2 GB or more of RAM per machine
+- 2 CPUs or more.
+- Unique hostname, MAC address, and product_uuid for every node.
+sudo cat /sys/class/dmi/id/product_uuid
+- Swap disabled. You MUST disable swap in order for the kubelet to work properly.
+
 # Посмотреть текущий конфиг сети
 ```bash
 nmcli device
@@ -12,6 +48,11 @@ sudo cat /etc/NetworkManager/system-connections/eth0.nmconnection
 ```bash
 hostnamectl set-hostname kub-master-01
 reboot
+```
+
+# Установить необходимые пакеты
+```bash
+sudo dnf install -y git curl vim iproute-tc
 ```
 
 # Установить сетевые настройки
@@ -43,6 +84,9 @@ dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce
 dnf info containerd.io
 # Install 
 dnf install -y containerd.io-1.6.24-3.1.el9
+# Можем создать default config
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+
 cat > /etc/containerd/config.toml <<EOF
 #   Copyright 2018-2022 Docker Inc.
 version = 2
@@ -102,6 +146,7 @@ version = 2
 EOF
 
 systemctl enable --now containerd
+systemctl restart containerd
 systemctl status containerd
 ```
 
@@ -118,8 +163,8 @@ timeout: 30
 debug: false
 EOF
 crictl ps
-# Аналог docker для containerd
 
+# Аналог docker для containerd
 curl -L https://github.com/containerd/nerdctl/releases/download/v1.7.0/nerdctl-1.7.0-linux-amd64.tar.gz | tar -zxf - -C /usr/bin
 nerdctl ps
 ```
@@ -132,4 +177,102 @@ nerdctl ps
 Посмотреть контейнеры kubelet
 ```bash
 nerdctl ps -n k8s.io ps
+```
+
+# Disable SELinux
+
+```bash
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+sudo setenforce 0
+```
+
+# Disable Swap
+
+```bash
+# Удаляем строки содержащие swap
+sudo sed -i '/swap/d' /etc/fstab
+sudo swapoff -a
+```
+
+# Letting iptables see bridged traffic
+
+```bash
+# Make sure that the br_netfilter module is loaded. This can be done by running 
+lsmod | grep br_netfilter
+# To load it explicitly call 
+sudo modprobe br_netfilter
+```
+
+`overlay` it’s needed for overlayfs, checkout more info here https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html. `br_netfilter` for iptables to correctly see bridged traffic, checkout more info here https://ebtables.netfilter.org/documentation/bridge-nf.html
+
+
+каталог /etc/modules-load.d/ это каталог для загрузки модулей в ядро (файлы с расширением conf)
+
+```bash
+sudo cat << EOF | sudo tee /etc/modules-load.d/br_netfilter.conf
+overlay
+br_netfilter
+EOF
+```
+
+As a requirement for your Linux Node’s iptables to correctly see bridged traffic, you should ensure net.bridge.bridge-nf-call-iptables is set to 1 in your sysctl config, e.g.
+
+```bash
+sudo cat << EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+```
+
+Apply settings
+```bash
+sudo modprobe overlay
+sudo modprobe br_netfilter
+sudo sysctl --system
+```
+
+# Проверяем chrony
+```bash
+systemctl status chronyd
+chronyc sources
+timedatectl
+cat /etc/chrony.conf
+# To Install NTPStat, it's possible to display time synchronization status
+dnf -y install ntpstat
+ntpstat
+```
+
+# Install kubelet, kubeadm and kubectl
+
+```bash
+# Add repo
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+```
+
+```bash
+# install kubeadm and the required packages:
+sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+```
+
+```bash
+# Lock versions in order to avoid unwanted updated via yum or dnf update
+sudo dnf install yum-plugin-versionlock -y
+sudo dnf versionlock kubelet kubeadm kubectl
+```
+
+```bash
+# Enable and start kubelet
+systemctl enable --now kubelet
+systemctl status kubelet
+# Это нормально: (code=exited, status=1/FAILURE), err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml
 ```
