@@ -87,6 +87,9 @@ dnf install -y containerd.io-1.6.24-3.1.el9
 # Можем создать default config
 sudo containerd config default | sudo tee /etc/containerd/config.toml
 
+# Проверяем какой sandbox image использовать в config.toml: sandbox_image = "registry.k8s.io/pause:3.9" 
+kubeadm config images list
+
 cat > /etc/containerd/config.toml <<EOF
 #   Copyright 2018-2022 Docker Inc.
 version = 2
@@ -127,7 +130,7 @@ version = 2
 
 [plugins]
   [plugins."io.containerd.grpc.v1.cri"]
-    sandbox_image = "k8s.gcr.io/pause:3.3"
+    sandbox_image = "registry.k8s.io/pause:3.9"
     max_container_log_line_size = -1
     [plugins."io.containerd.grpc.v1.cri".containerd]
       default_runtime_name = "runc"
@@ -276,3 +279,61 @@ systemctl enable --now kubelet
 systemctl status kubelet
 # Это нормально: (code=exited, status=1/FAILURE), err="failed to load kubelet config file, path: /var/lib/kubelet/config.yaml
 ```
+
+# Правим файл с конфигурацией для kubeadm `cluster.yaml`
+
+```
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.28.0
+controlPlaneEndpoint: 192.168.0.149:6443
+networking:
+  podSubnet: 10.244.0.0/16
+```
+
+# Firewall
+```bash
+# master
+firewall-cmd --add-port={6443,2379-2380,10250,10251,10252,5473,179,5473}/tcp --permanent
+firewall-cmd --add-port={4789,8285,8472}/udp --permanent
+firewall-cmd --reload
+
+#worker
+firewall-cmd --add-port={10250,30000-32767,5473,179,5473}/tcp --permanent
+firewall-cmd --add-port={4789,8285,8472}/udp --permanent
+firewall-cmd --reload
+```
+
+
+# Создаем кластер
+
+```bash
+kubeadm init --config cluster.yaml --upload-certs --ignore-preflight-errors NumCPU | tee -a kubeadm_init.log
+```
+
+```bash
+# To start using your cluster, you need to run the following as a regular user:
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+# Alternatively, if you are the root user, you can run:
+
+export KUBECONFIG=/etc/kubernetes/admin.conf
+```
+
+# Ставим сетевой плагин
+
+```bash
+kubectl apply -f calico.yaml
+```
+
+# Проверяем, что всё заработало
+
+```bash
+kubectl get node
+kubectl get po -A
+```
+
