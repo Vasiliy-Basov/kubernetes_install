@@ -228,6 +228,11 @@ local_volume_provisioner_storage_classes:
 #   - effect: NoSchedule
 #     operator: Exists
 
+# Вроде бы чтобы это работало в arp режиме в vsphere нужно включить promiscous mode enable на vswitch? 
+# Манифесты kube-vip находятся здесь /etc/kubernetes/manifests/
+# Чтобы установить kube-vip вручную мы должны поместить туда манифесты и выполнить команду
+# kubeadm init --control-plane 10.0.2.5
+# Чтобы установить kube-vip на других нодах нужно используя вывод команды kubeadm init выполнить команду kubeadm join
 # Kube VIP
 kube_vip_enabled: true
 kube_vip_arp_enabled: true
@@ -237,8 +242,27 @@ loadbalancer_apiserver:
   address: "{{ kube_vip_address }}"
   port: 6443
 kube_vip_interface: ens224
-# kube_vip_services_enabled: false
+kube_vip_services_enabled: true
 ```
+
+https://kube-vip.io/docs/installation/static/
+
+# Генерация манифеста и помещение его в каталог /etc/kubernetes/manifests/
+export VIP=172.18.7.60
+export INTERFACE=ens224
+KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
+# Для containerd (не docker)
+alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
+
+# Генерируем манифест:
+kube-vip manifest pod \
+    --interface $INTERFACE \
+    --address $VIP \
+    --controlplane \
+    --services \
+    --arp \
+    --leaderElection | tee /etc/kubernetes/manifests/kube-vip.yaml
+
 
 # Install
 ```bash
@@ -263,7 +287,9 @@ export KUBECONFIG=/home/master/projects/kubernetes_install/ansible/kubespray/inv
 kubectl label nodes sztu-kubws-vt01 kubernetes.io/role=worker
 ```
 
-## Ошибка Err  
+## Ошибка Error  
+Проблема возникает при начальной установке или при перезагрузке kubelet  
+Не критично
 "invalid capacity 0 on image filesystem"
 ```bash
 # Посмотреть логи kubelet
