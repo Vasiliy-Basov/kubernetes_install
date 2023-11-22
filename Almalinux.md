@@ -282,11 +282,13 @@ systemctl status kubelet
 
 # Правим файл с конфигурацией для kubeadm `cluster.yaml`
 
-```
+```yaml
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 kubernetesVersion: v1.28.0
+# Адрес Ha-Proxy сервера
 controlPlaneEndpoint: 192.168.0.149:6443
+# Сеть для подов (calico по default использует эту сеть)
 networking:
   podSubnet: 10.244.0.0/16
 ```
@@ -302,6 +304,12 @@ firewall-cmd --reload
 firewall-cmd --add-port={10250,30000-32767,5473,179,5473}/tcp --permanent
 firewall-cmd --add-port={4789,8285,8472}/udp --permanent
 firewall-cmd --reload
+```
+
+```bash
+# Disable
+systemctl stop firewalld
+systemctl disable firewalld
 ```
 
 
@@ -322,6 +330,9 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 # Alternatively, if you are the root user, you can run:
 
 export KUBECONFIG=/etc/kubernetes/admin.conf
+# or
+mkdir -p ~/.kube
+cp /etc/kubernetes/admin.conf ~/.kube/config
 ```
 
 # Ставим сетевой плагин
@@ -329,11 +340,87 @@ export KUBECONFIG=/etc/kubernetes/admin.conf
 ```bash
 kubectl apply -f calico.yaml
 ```
+Изменения внесенные в calico:
+```yaml
+            # Auto-detect the BGP IP address.
+            - name: NODEIP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+            - name: IP_AUTODETECTION_METHOD
+              value: can-reach=$(NODEIP)
+            - name: IP
+              value: "autodetect"
+            # Enable IPIP
+            - name: CALICO_IPV4POOL_IPIP
+              value: "CrossSubnet"
+            # Enable or Disable VXLAN on the default IP pool.
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "Never"
+```
+
 
 # Проверяем, что всё заработало
 
 ```bash
 kubectl get node
 kubectl get po -A
+```
+
+# Worker Install
+
+## Установить hostname
+
+```bash
+hostnamectl set-hostname kub-worker-01
+reboot
+nano /etc/hosts
+```
+
+## Generate new uuid for hyper-v clone
+
+C:\Projects\kubernetes_install\New-BIOSGUIDgenerator.ps
+
+## Change Machine ID
+
+```bash
+cat /etc/machine-id
+rm /etc/machine-id
+# Initializing machine ID from random generator.
+systemd-machine-id-setup
+cat /etc/machine-id
+```
+
+## Change mac address
+В доболнительных параметрах сетевой карты Hyper-v
+
+## Change Ip
+```bash
+# IPv4
+nmcli connection modify eth0 ipv4.addresses 192.168.0.151/24
+# restart the interface to reload settings
+nmcli connection down eth0; nmcli connection up eth0
+```
+
+## Change Sandbox Image
+```bash
+nano /etc/containerd/config.toml
+
+sandbox_image = "registry.k8s.io/pause:3.9"
+systemctl restart containerd
+```
+
+## Генерируем новый токен
+```bash
+kubeadm token generate
+5zme0q.jlumz8renz5g1pbx
+kubeadm token create 5zme0q.jlumz8renz5g1pbx --print-join-command
+```
+
+## Присоединяем Worker Node
+
+```bash
+kubeadm join 192.168.0.149:6443 --token 5zme0q.jlumz8renz5g1pbx --discovery-token-ca-cert-hash sha256:0ae08a253dd14bc3df18b263e4a1650f14afab24ea77ef60d6d7228068aea26d
 ```
 
