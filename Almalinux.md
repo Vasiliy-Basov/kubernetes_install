@@ -424,3 +424,109 @@ kubeadm token create 5zme0q.jlumz8renz5g1pbx --print-join-command
 kubeadm join 192.168.0.149:6443 --token 5zme0q.jlumz8renz5g1pbx --discovery-token-ca-cert-hash sha256:0ae08a253dd14bc3df18b263e4a1650f14afab24ea77ef60d6d7228068aea26d
 ```
 
+## Ставим Label для Worker Node
+
+```bash
+kubectl label node kub-worker-01 node-role.kubernetes.io/node=""
+```
+
+## Ставим helm
+```bash
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+mv /usr/local/bin/helm /usr/bin
+```
+
+## Ставим ingress-controller
+
+```bash
+helm show values ingress-nginx --repo https://kubernetes.github.io/ingress-nginx > nginx-ingress-original.yaml
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+```
+
+Изменения сделанные в yaml
+```yaml
+controller:
+  # Файл конфигурации, записывает в configmap
+  config:
+    # Не нужно в access-log писать запросы к health check-ам (kubelet раз в 15 секунд делает эти запросы)
+    skip-access-log-urls: /health,/healthz,/ping
+    # Когда меняется конфигурация ingress controller то reload-ся nginx
+    # а старая версия обрабатывает запросы и может висеть часами, эта настройка убивает старую версию nginx через 30 сек
+    worker-shutdown-timeout: "30"
+  
+
+  # -- Optionally change this to ClusterFirstWithHostNet in case you have 'hostNetwork: true'.
+  # By default, while using host network, name resolution uses the host's DNS. If you wish nginx-controller
+  # to keep resolving names inside the k8s network, use ClusterFirstWithHostNet.
+  dnsPolicy: ClusterFirstWithHostNet
+
+  # -- This configuration defines if Ingress Controller should allow users to set
+  # their own *-snippet annotations, otherwise this is forbidden / dropped
+  # when users add those annotations.
+  # Global snippets in ConfigMap are still respected
+  allowSnippetAnnotations: true
+
+  # -- Required for use with CNI based kubernetes installations (such as ones set up by kubeadm),
+  # since CNI and hostport don't mix yet. Can be deprecated once https://github.com/kubernetes/kubernetes/issues/23920
+  # is merged
+  # Внутри подов прописан сетевой namespace узла, (Более простой и быстрый вариант если не настроен Load Balancer)
+  hostNetwork: true
+
+  # -- Election ID to use for status update
+  electionID: ingress-controller-leader
+
+  replicaCount: 2
+
+## If true, create & use Pod Security Policy resources
+## https://kubernetes.io/docs/concepts/policy/pod-security-policy/
+podSecurityPolicy:
+  enabled: true
+```
+
+```bash
+helm upgrade --install ingress-nginx ingress-nginx -f nginx-ingress-changed.yaml --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.metrics.enabled=true
+```
+
+## Coredns
+Dns сервер который работает в кластере, он ходит в api kubernetes и берет от туда информацию о запущенных сервисах и какие адреса у этих сервисов.
+
+Исправляем проблему с восемью запросами
+
+В каждом поде появляется файл etc/resolv.conf (В нем содержится информация о dns сервере (ip CoreDNS) и search домен)
+Сначала будут разрешаться внутренние search домены (.default.svc.cluster.local. .svc.cluster.local. .cluster.local. .local.) для кластера и поэтому когда мы будем делать запрос в интернет (например ya.ru) у нас будет очень много лишних запросов к внутренним dns.
+
+Запускаем тестовый под, заходим в него с двух консолей и смотрим на вывод tcpdump
+
+```bash
+kubectl run -t -i --rm --image centosadmin/utils test bash
+# Команда для просмотра dns запросов
+tcpdump -neli eth0 port 53
+```
+
+Идем во вторую консоль
+```bash
+# из второй консоли:
+kubectl exec -it test -- bash
+curl ya.ru
+```
+Видим в первой консоли количество запросов
+
+Решение:
+1. Вариант Создавать node local dns (kubespray его ставит) на всех нодах которые будут кешировать запросы и послать или локально внутри узла или на coreDNS по TCP (Это лучше для приложений работающих на udp чтобы не пропадали пакеты)
+2. Вариант Включить autopath в CoreDNS (На запрос ya.ru.default.svc.cluster.local нам сразу придет ответ что это cname для ya.ru) CoreDNS становиться более интеллектуальным
+
+```bash
+kubectl edit configmap -n kube-system coredns
+# В открывшемся файле меняем
+pods insecure
+# на
+pods verified
+# и дописываем под словом ready
+autopath @kubernetes
+```
+Файл конфигурации перечитывается время от времени  
+Проверяем curl ya.ru
+
+## kubelet
