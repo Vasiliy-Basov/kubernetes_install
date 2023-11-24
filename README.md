@@ -287,6 +287,13 @@ export KUBECONFIG=/home/master/projects/kubernetes_install/ansible/kubespray/inv
 kubectl label nodes sztu-kubws-vt01 kubernetes.io/role=worker
 ```
 
+
+```bash
+# Настраиваем подключение к кластеру
+mkdir -p ~/.kube
+cp /home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
+```
+
 ## Ошибка Error  
 Проблема возникает при начальной установке или при перезагрузке kubelet  
 Не критично
@@ -308,4 +315,24 @@ uname -a
 ```bash
 systemctl restart containerd
 systemctl restart kubelet
+```
+
+## Upgrade addons
+
+```bash
+ansible-playbook -b -i inventory/mycluster/inventory.ini -u master --become --become-user=root cluster.yml --tags=apps -K
+```
+
+## Kube-Vip cloud provider install
+https://kube-vip.io/docs/usage/cloud-provider/
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+kubectl create configmap -n kube-system kubevip --from-literal range-global=172.18.7.70-172.18.7.72
+```
+
+## Install Ingress-nginx
+https://kubernetes.github.io/ingress-nginx/deploy/
+```bash
+helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true
 ```
