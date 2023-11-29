@@ -1,4 +1,5 @@
 # HaProxy Install
+
 ```bash
 sudo dnf update -y
 hostnamectl set-hostname ha-proxy
@@ -27,7 +28,8 @@ sudo firewall-cmd --add-port=6443/tcp --permanent
 sudo firewall-cmd --reload
 ```
 
-# Prerequisutes
+# Prerequisites
+
 - 2 GB or more of RAM per machine
 - 2 CPUs or more.
 - Unique hostname, MAC address, and product_uuid for every node.
@@ -35,6 +37,7 @@ sudo cat /sys/class/dmi/id/product_uuid
 - Swap disabled. You MUST disable swap in order for the kubelet to work properly.
 
 # Посмотреть текущий конфиг сети
+
 ```bash
 nmcli device
 nmcli device show eth0
@@ -51,6 +54,7 @@ reboot
 ```
 
 # Установить необходимые пакеты
+
 ```bash
 sudo dnf install -y git curl vim iproute-tc
 ```
@@ -90,6 +94,7 @@ sudo containerd config default | sudo tee /etc/containerd/config.toml
 # Проверяем какой sandbox image использовать в config.toml: sandbox_image = "registry.k8s.io/pause:3.9" 
 kubeadm config images list
 
+# Этот файл config.toml взят из kubespray
 cat > /etc/containerd/config.toml <<EOF
 #   Copyright 2018-2022 Docker Inc.
 version = 2
@@ -173,11 +178,12 @@ nerdctl ps
 ```
 
 В containerd есть namespace, это не kubernetes namespace. Они позволяют разделить контейнеры запущенные различными утилитами. Например 
-- docker запускает контейнерв в namespace mobi. 
+- docker запускает контейнеров в namespace mobi. 
 - kubelet запускает контейнеры в namespace k8s.io. 
 - nerdctl запускает в собственном namespace.
 
 Посмотреть контейнеры kubelet
+
 ```bash
 nerdctl ps -n k8s.io ps
 ```
@@ -206,8 +212,8 @@ lsmod | grep br_netfilter
 sudo modprobe br_netfilter
 ```
 
-`overlay` it’s needed for overlayfs, checkout more info here https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html. `br_netfilter` for iptables to correctly see bridged traffic, checkout more info here https://ebtables.netfilter.org/documentation/bridge-nf.html
-
+`overlay` it’s needed for overlayfs, checkout more info here https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html.  
+`br_netfilter` for iptables to correctly see bridged traffic, checkout more info here https://ebtables.netfilter.org/documentation/bridge-nf.html
 
 каталог /etc/modules-load.d/ это каталог для загрузки модулей в ядро (файлы с расширением conf)
 
@@ -294,6 +300,7 @@ networking:
 ```
 
 # Firewall
+
 ```bash
 # master
 firewall-cmd --add-port={6443,2379-2380,10250,10251,10252,5473,179,5473}/tcp --permanent
@@ -348,8 +355,11 @@ kubectl apply -f calico.yaml
                 fieldRef:
                   apiVersion: v1
                   fieldPath: status.hostIP
+            # can-reach метод который указывает на адрес узла 
+            # также есть метод kubernetes internal ip который тоже можно использовать (подставляет интерфейс на котором находится внутренний адрес узла)
             - name: IP_AUTODETECTION_METHOD
               value: can-reach=$(NODEIP)
+            # Ip интерфейса через который работает calico берется из IP_AUTODETECTION_METHOD
             - name: IP
               value: "autodetect"
             # Enable IPIP
@@ -360,6 +370,20 @@ kubectl apply -f calico.yaml
               value: "Never"
 ```
 
+По default calico берет первый ip адрес с первого интерфейса который она нашла.  
+Дополнительно мы можем указать адрес узла из статуса kubectl get node -o wide (Раздел INTERNAL-IP)  
+Можем использовать функцию can reach: google.com тот интерфейс через который будет доступен google и будет работать calico  
+Можем указать REGEXP  
+Или Skip REGEXP  
+Или CIDR (Указываем подсеть)  
+У calico есть база данных которая хранит свои ресурсы либо etcd отдельно от ресурсов kube либо кастомные ресурсы kube crd создаются (Это default вариант)  
+У calico есть своя утилита calicoctl
+
+```bash
+cd /usr/bin
+curl -L https://github.com/projectcalico/calico/releases/download/v3.26.4/calicoctl-linux-amd64 -o calicoctl
+calicoctl get nodes
+```
 
 # Проверяем, что всё заработало
 
@@ -393,7 +417,7 @@ cat /etc/machine-id
 ```
 
 ## Change mac address
-В доболнительных параметрах сетевой карты Hyper-v
+В дополнительных параметрах сетевой карты Hyper-v
 
 ## Change Ip
 ```bash
@@ -430,7 +454,7 @@ kubeadm join 192.168.0.149:6443 --token 5zme0q.jlumz8renz5g1pbx --discovery-toke
 kubectl label node kub-worker-01 node-role.kubernetes.io/node=""
 ```
 
-## Ставим helm
+# Ставим helm
 ```bash
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 chmod 700 get_helm.sh
@@ -438,7 +462,7 @@ chmod 700 get_helm.sh
 mv /usr/local/bin/helm /usr/bin
 ```
 
-## Ставим ingress-controller
+# Ставим ingress-controller
 
 ```bash
 helm show values ingress-nginx --repo https://kubernetes.github.io/ingress-nginx > nginx-ingress-original.yaml
@@ -489,15 +513,15 @@ podSecurityPolicy:
 helm upgrade --install ingress-nginx ingress-nginx -f nginx-ingress-changed.yaml --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.metrics.enabled=true
 ```
 
-## Coredns
+# Coredns
 Dns сервер который работает в кластере, он ходит в api kubernetes и берет от туда информацию о запущенных сервисах и какие адреса у этих сервисов.
 
 Исправляем проблему с восемью запросами
 
-В каждом поде появляется файл etc/resolv.conf (В нем содержится информация о dns сервере (ip CoreDNS) и search домен)
-Сначала будут разрешаться внутренние search домены (.default.svc.cluster.local. .svc.cluster.local. .cluster.local. .local.) для кластера и поэтому когда мы будем делать запрос в интернет (например ya.ru) у нас будет очень много лишних запросов к внутренним dns.
+В каждом поде появляется файл `etc/resolv.conf` (В нем содержится информация о `dns сервере` (`ip CoreDNS`) и `search` домен)  
+Сначала будут разрешаться внутренние `search` домены (`.default.svc.cluster.local.` `.svc.cluster.local.` `.cluster.local.` `.local.`) для кластера и поэтому когда мы будем делать запрос в интернет (например `ya.ru`) у нас будет очень много лишних запросов к внутренним dns.  
 
-Запускаем тестовый под, заходим в него с двух консолей и смотрим на вывод tcpdump
+Запускаем тестовый под, заходим в него с двух консолей и смотрим на вывод `tcpdump`
 
 ```bash
 kubectl run -t -i --rm --image centosadmin/utils test bash
@@ -511,22 +535,83 @@ tcpdump -neli eth0 port 53
 kubectl exec -it test -- bash
 curl ya.ru
 ```
+
 Видим в первой консоли количество запросов
 
 Решение:
 1. Вариант Создавать node local dns (kubespray его ставит) на всех нодах которые будут кешировать запросы и послать или локально внутри узла или на coreDNS по TCP (Это лучше для приложений работающих на udp чтобы не пропадали пакеты)
 2. Вариант Включить autopath в CoreDNS (На запрос ya.ru.default.svc.cluster.local нам сразу придет ответ что это cname для ya.ru) CoreDNS становиться более интеллектуальным
 
-```bash
-kubectl edit configmap -n kube-system coredns
-# В открывшемся файле меняем
-pods insecure
-# на
-pods verified
-# и дописываем под словом ready
-autopath @kubernetes
-```
+    ```bash
+    kubectl edit configmap -n kube-system coredns
+    # В открывшемся файле меняем
+    pods insecure
+    # на
+    pods verified
+    # и дописываем под словом ready
+    autopath @kubernetes
+    ```
 Файл конфигурации перечитывается время от времени  
-Проверяем curl ya.ru
+Проверяем `curl ya.ru`
 
-## kubelet
+# kubelet
+
+Опции которые указываются у kubelet на узле
+
+Эти параметры важны в production (отвечают за резервирование ресурсов под систему (под kubelet))
+```bash
+# Когда запускается pod на каком то узле то у этого pod есть request и limit
+# Если в request и limit указать целое количество ядер (и они должны быть равны) для приложения то kubelet будет выделять этому приложению эксклюзивно эти два cpu и приложение никуда не будет переезжать на другие ядра и другим приложениям эти ядра выделяться не будут. Есть проблема с виртуальными машинами, если у нас были машины с двумя ядрами а потом мы увеличим их до 8 то kubelet не запуститься будет ошибка. В каталоге /var/lib/kubelet есть файл в котором прописана эта настройка, его нужно удалить и сделать restart kubelet тогда kubelet его создаст заново с новыми параметрами.
+--cpu-manager-policy=static
+# Параметры при наступлении которых kubelet начинает выселять pod со своего узла 
+# Размещение pod на узлах идет по request, scheduler не проверяет сколько свободных limit есть на узле. И если количество limit будет больше чем количество свободных ресурсов на узле (т.е limit не исчерпаны а ресурсов уже нет) kubelet начнет убивать поды на узле сначала поды самого низкого класса обслуживания.
+# Сколько памяти должно оставаться на узле не занятым нашими приложениями:
+--eviction-hard=memory.available<1Gi
+# Начинаем процедуру эвакуации если меньше 1Gi до тех пор пока не освободиться 2Gi:
+--eviction-minimum-reclaim=memory.available=2Gi
+# Сколько ждать удаления pod которые завершаются по процедуре эвакуации. после 30 сек будет kill -9 
+--eviction-max-pod-grace-period=30
+# Ресурсы которые выделяются под систему
+--system-reserved=memory=1.5Gi,cpu=1
+# Ресурсы которые выделяются под kubelet
+--kube-reserved=memory=512Mi,cpu=500m
+# Эти ресурсы нельзя будет распределять под приложения
+```
+
+# Утилита crictl
+
+```bash
+# Посмотреть запущенные контейнеры
+crictl ps
+# Посмотреть скачанные образы
+crictl images ls
+# Посмотреть логи контейнера kube-apiserver
+crictl logs ef26623bd919a
+```
+Эта утилита больше для просмотра, посмотреть контейнеры и логи контейнера
+
+# Утилита nerdctl
+
+Умеет запускать контейнеры. Есть команда run
+```bash
+# Нужно указывать namespace
+nerdctl -n k8s.io ps
+```
+
+# Добавление kubectl bash completion (автозаполнение по tab)
+https://kubernetes.io/ru/docs/tasks/tools/install-kubectl/
+
+```bash
+yum install bash-completion
+# Проверка
+exit
+# заходим обратно если команда отработало то все успешно
+type _init_completion
+echo 'source <(kubectl completion bash)' >>~/.bashrc
+kubectl completion bash >/etc/bash_completion.d/kubectl
+echo 'alias k=kubectl' >>~/.bashrc
+echo 'complete -F __start_kubectl k' >>~/.bashrc
+# Выходим заходим проверяем
+```
+
+Выходим из sudo-сессии root, заходим назад, чтобы профиль перечитался.
