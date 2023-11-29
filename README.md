@@ -500,3 +500,48 @@ kubectl describe nodes | egrep "Taints:|Name:"
 # ставим если не стоит
 kubectl taint nodes <k8s-primary-name> node-role.kubernetes.io/control-plane=:NoSchedule
 ```
+
+### Create secret from file
+
+csi-vsphere.conf
+```yaml
+[Global]
+# Может быть любым, придумываем название
+cluster-id = "sztu-kub"
+# Может быть любым, придумываем название
+cluster-distribution = "vSphere"
+# ca-file = <ca file path> # optional, use with insecure-flag set to false
+# thumbprint = "<cert thumbprint>" # optional, use with insecure-flag set to false without providing ca-file
+
+[VirtualCenter "1.1.1.1"]
+# Самоподписанный сертификат если true
+insecure-flag = "true"
+user = "Administrator@vsphere.local"
+password = "StrongPassword"
+port = "443"
+datacenters = "Datacenter"
+```
+
+Применяем:
+```bash
+kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf --namespace=vmware-system-csi
+```
+
+```bash
+# Проверяем
+kubectl get secret vsphere-config-secret --namespace=vmware-system-csi
+```
+
+### Устанавливаем в кластер VMWare CSI plug-in
+
+Последние версии ищем здесь  
+https://github.com/kubernetes-sigs/vsphere-csi-driver  
+Release Notes:  
+https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/rn/vmware-vsphere-container-storage-plugin-30-release-notes/index.html
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.1.2/manifests/vanilla/vsphere-csi-driver.yaml
+```
+
+### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
+
