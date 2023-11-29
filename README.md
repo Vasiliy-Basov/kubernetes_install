@@ -369,3 +369,134 @@ https://kubernetes.github.io/ingress-nginx/deploy/
 ```bash
 helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true
 ```
+
+## Integration with VMWare
+https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
+
+
+VMware vSphere Container Storage Plug-in
+
+- `CSI-плагин`: CSI-плагин отвечает за предоставление, присоединение и отсоединение volume от виртуальных машин, монтирование, форматирование и отмонтирование volumes из пода внутри виртуальной машины узла и так далее. Он разрабатывается как CSI-плагин вне ядра для Kubernetes.
+
+- `Syncer`: Syncer отвечает за передачу метаданных PV, PVC и пода в `CNS`. Он также предоставляет оператор CNS, который используется в vSphere с Tanzu. Дополнительную информацию можно найти в документации vSphere с Tanzu.
+
+Components of the vSphere Container Storage Plug-in
+
+1) vSphere Container Storage Plug-in Controller
+
+  vSphere Container Storage Plug-in Controller предоставляет интерфейс, используемый kubernetes для управления жизненным циклом томов vSphere. Он также позволяет создавать, расширять и удалять тома, а также подключать и отключать тома от node VM.
+
+2) vSphere Container Storage Plug-in Node
+
+  vSphere Container Storage Plug-in Node позволяет форматировать и монтировать тома на nades, а также использовать привязки монтирования для томов внутри pods. Перед тем как том отсоединится, узел плагина хранилища контейнеров vSphere помогает отмонтировать том с узла. Узел плагина хранилища контейнеров vSphere работает как daemonset внутри кластера.
+
+2) Syncer (Синхронизатор)
+
+Syncer метаданных отвечает за передачу метаданных PV, PVC и пода в CNS. Данные отображаются в панели управления CNS в клиенте vSphere. Эти данные помогают администраторам vSphere определить, какие кластеры Kubernetes, приложения, поды, PVC и PV используют данный том.
+
+Полная синхронизация отвечает за поддержание актуальности CNS с метаданными томов Kubernetes, такими как PV, PVC, поды и так далее. Полная синхронизация полезна в следующих случаях:
+
+- CNS выходит из строя.
+- Pod плагина хранилища контейнеров vSphere выходит из строя.
+- Сервер API выходит из строя или ядро служб Kubernetes выходит из строя.
+- Сервер vCenter восстанавливается до точки восстановления из резервной копии.
+- etcd восстанавливается до точки восстановления из резервной копии.
+
+## Устанавливаем taints на все ноды 
+
+When the kubelet is started with an external cloud provider, this taint is set on a node to mark it as unusable. After a controller from the cloud-controller-manager initializes this node, the kubelet removes this taint.
+
+```bash
+kubectl get nodes
+kubectl taint node <node-name> node.cloudprovider.kubernetes.io/uninitialized=true:NoSchedule
+kubectl describe nodes | egrep "Taints:|Name:"
+```
+
+## Install vSphere Cloud Provider Interface
+Download Change and Install vsphere-cloud-controller-manager.yaml
+
+Если версия kubernetes 1.28.x то прописываем
+```bash
+VERSION=1.28
+# Скачиваем
+wget https://raw.githubusercontent.com/kubernetes/cloud-provider-vsphere/release-$VERSION/releases/v$VERSION/vsphere-cloud-controller-manager.yaml
+```
+Изменяем для нашего сервера
+
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-controller-manager
+  labels:
+    vsphere-cpi-infra: service-account
+    component: cloud-controller-manager
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vsphere-cloud-secret
+  labels:
+    vsphere-cpi-infra: secret
+    component: cloud-controller-manager
+  namespace: kube-system
+  # NOTE: this is just an example configuration, update with real values based on your environment
+stringData:
+  1.1.1.1.username: "Administrator@vsphere.local"
+  1.1.1.1.password: "StrongPassword"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vsphere-cloud-config
+  labels:
+    vsphere-cpi-infra: config
+    component: cloud-controller-manager
+  namespace: kube-system
+data:
+  # NOTE: this is just an example configuration, update with real values based on your environment
+  vsphere.conf: |
+    # Global properties in this section will be used for all specified vCenters unless overriden in VirtualCenter section.
+    global:
+      port: 443
+      # set insecureFlag to true if the vCenter uses a self-signed cert
+      insecureFlag: true
+      # settings for using k8s secret
+      secretName: vsphere-cloud-secret
+      secretNamespace: kube-system
+
+    # vcenter section
+    vcenter:
+      1.1.1.1:
+        server: 1.1.1.1
+        datacenters:
+          - "Datacenter"
+---
+
+....
+```
+
+Применяем
+```bash
+kubectl apply -f vsphere-cloud-controller-manager.yaml
+# Если надо удалить
+rm vsphere-cloud-controller-manager.yaml
+```
+
+## Deploying the vSphere Container Storage Plug-in on a Native Kubernetes Cluster
+
+
+### Create namespace
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.0.0/manifests/vanilla/namespace.yaml
+```
+Ставим taints на control plane
+```bash
+# Проверяем что не стоит
+kubectl describe nodes | egrep "Taints:|Name:"
+# ставим если не стоит
+kubectl taint nodes <k8s-primary-name> node-role.kubernetes.io/control-plane=:NoSchedule
+```
