@@ -1,7 +1,40 @@
 # Kubernetes Install
-
+Ставим SCSI контроллер в VM на VMWARE-PARAvirtual (Для настройки vSphere Container Storage Plug-in)
 Install Ubuntu Server Minimazed - Выбираем при инсталляции Ubuntu Server
 
+## disk.EnableUUID=1 (For VMware)
+Install govc 
+
+For Windows:
+
+```powershell
+# Create credential store for vCenter authentication:
+
+$vcenter = "172.18.7.151"
+$cred = get-credential
+New-VICredentialStoreItem -Host $vcenter -User $cred.username -Password $cred.GetNetworkCredential().password
+$env:GOVC_URL="https://"+$vcenter
+$env:GOVC_USERNAME=(Get-VICredentialStoreItem $vcenter).User
+$env:GOVC_PASSWORD=(Get-VICredentialStoreItem $vcenter).Password
+$env:GOVC_INSECURE="true"
+# To print your session GOVC variables, you can run the following (note that the password will be in plaintext, no way around it as far as I know):
+ls env:GOVC*
+# Now you should be able to run govc to interface with vCenter API:
+govc about
+```
+
+```powershell
+govc ls
+govc ls '/SZTU Datacenter/vm/SZTU/VM OSVTiO/Kubernetes'
+```
+
+```powershell
+# Ставим disk.EnableUUID=TRUE на всех VM
+govc vm.change -vm /"SZTU Datacenter"/vm/SZTU/"VM OSVTiO"/Kubernetes/sztu-kubms-vt01 -e="disk.enableUUID=TRUE"
+# Проверяем что в Edit Settings - Advanced Parametrs Появилось disk.enableUUID TRUE
+```
+
+## Первоначальная настройка
 ```bash
 # Generate ssh key pair to connect
 ssh-keygen -t ed25519 -C "your_email@example.com"
