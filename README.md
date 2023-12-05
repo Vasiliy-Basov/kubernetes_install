@@ -193,6 +193,16 @@ calico_rr
 
 Изменения которые сделаны
 
+/home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluster/group_vars/all/all.yml
+```yaml
+## Upstream dns servers
+# Ставим чтобы nodelocal dns не крашился при перезагрузке node
+upstream_dns_servers:
+  - 172.18.5.207
+  - 172.18.5.208
+  - 8.8.8.8
+```
+
 /home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
 ```yaml
 # This is the user that owns tha cluster installation.
@@ -225,7 +235,7 @@ helm_enabled: true
 registry_enabled: true
 registry_namespace: kube-system
 registry_storage_class: ""
-registry_disk_size: "10Gi"
+registry_disk_size: "50Gi"
 
 # Metrics Server deployment
 metrics_server_enabled: true
@@ -328,9 +338,11 @@ cp /home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluste
 ```
 
 ## Ошибка Error  
+
 Проблема возникает при начальной установке или при перезагрузке kubelet  
 Не критично
 "invalid capacity 0 on image filesystem"
+
 ```bash
 # Посмотреть логи kubelet
 # -x - 
@@ -344,6 +356,7 @@ sudo containerd --version
 cat /etc/os-release
 uname -a
 ```
+
 Возможное решение
 ```bash
 systemctl restart containerd
@@ -416,11 +429,13 @@ kubectl describe nodes | egrep "Taints:|Name:"
 Download Change and Install vsphere-cloud-controller-manager.yaml
 
 Если версия kubernetes 1.28.x то прописываем
+
 ```bash
 VERSION=1.28
 # Скачиваем
 wget https://raw.githubusercontent.com/kubernetes/cloud-provider-vsphere/release-$VERSION/releases/v$VERSION/vsphere-cloud-controller-manager.yaml
 ```
+
 Изменяем для нашего сервера
 
 ```yaml
