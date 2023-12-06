@@ -218,6 +218,10 @@ kubeconfig_localhost: true
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
 kubectl_localhost: true
 
+# Enable nodelocal dns cache
+# Убираю nodelocaldns потому что сервер без доступа в инет
+enable_nodelocaldns: false
+
 # Для kube-vip не до конца понял нужно ли включать в случае kube_proxy_mode: iptables
 # https://github.com/kubernetes-sigs/kubespray/blob/master/docs/kube-vip.md
 # configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface
@@ -556,6 +560,11 @@ https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/rn/vmwar
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.1.2/manifests/vanilla/vsphere-csi-driver.yaml
+```
+
+или сачала скачиваем локально
+```bash
+curl -o vsphere-csi-driver.yaml https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.1.2/manifests/vanilla/vsphere-csi-driver.yaml
 ```
 
 ### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
