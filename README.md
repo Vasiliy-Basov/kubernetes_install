@@ -387,6 +387,31 @@ https://kubernetes.github.io/ingress-nginx/deploy/
 helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true
 ```
 
+## Настраиваем insecure registry
+
+На всех нодах
+```bash
+cd /etc/containerd/
+cp config.toml config_backup.toml
+nano config.toml
+```
+Добавляем
+```conf
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
+          endpoint = ["https://gcr.io"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.local"]
+          endpoint = ["http://registry.local"]
+      [plugins."io.containerd.grpc.v1.cri".registry.configs]
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.local".tls]
+          ca_file = ""
+          cert_file = ""
+          insecure_skip_verify = true
+          key_file = ""
+```
+```bash
+sudo systemctl restart containerd
+```
+
 ## Integration with VMWare
 https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
 
@@ -405,7 +430,7 @@ Components of the vSphere Container Storage Plug-in
 
 2) vSphere Container Storage Plug-in Node
 
-  vSphere Container Storage Plug-in Node позволяет форматировать и монтировать тома на nades, а также использовать привязки монтирования для томов внутри pods. Перед тем как том отсоединится, узел плагина хранилища контейнеров vSphere помогает отмонтировать том с узла. Узел плагина хранилища контейнеров vSphere работает как daemonset внутри кластера.
+  vSphere Container Storage Plug-in Node позволяет форматировать и монтировать тома на nodes, а также использовать привязки монтирования для томов внутри pods. Перед тем как том отсоединится, узел плагина хранилища контейнеров vSphere помогает отмонтировать том с узла. Узел плагина хранилища контейнеров vSphere работает как daemonset внутри кластера.
 
 2) Syncer (Синхронизатор)
 
@@ -565,7 +590,9 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-d
 или сачала скачиваем локально
 ```bash
 curl -o vsphere-csi-driver.yaml https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.1.2/manifests/vanilla/vsphere-csi-driver.yaml
+kubectl apply -f /home/master/projects/kubernetes_install/vsphere-csi-driver.yaml
 ```
 
 ### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
+
 
