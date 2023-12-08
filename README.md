@@ -387,6 +387,48 @@ https://kubernetes.github.io/ingress-nginx/deploy/
 helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true
 ```
 
+## Создаем ingress для registry.local
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  name: registry
+  namespace: kube-system
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: registry.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: registry
+            port:
+              number: 5000
+```
+
+Применяем:
+
+```bash
+kubectl apply -f /home/master/projects/kubernetes_install/registry-ingress.yaml
+```
+
+
+## Прописываем в /etc/hosts registry.local
+
+На всех нодах:
+
+```bash
+registry.local 172.18.7.70 
+```
+
 ## Настраиваем insecure registry
 
 На всех нодах
@@ -395,7 +437,8 @@ cd /etc/containerd/
 cp config.toml config_backup.toml
 nano config.toml
 ```
-Добавляем
+Добавляем  
+Эта функция будет deprecated в новых версиях, нужно будет по другому прописывать.
 ```conf
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
           endpoint = ["https://gcr.io"]
@@ -411,6 +454,8 @@ nano config.toml
 ```bash
 sudo systemctl restart containerd
 ```
+
+
 
 ## Integration with VMWare
 https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
@@ -595,4 +640,43 @@ kubectl apply -f /home/master/projects/kubernetes_install/vsphere-csi-driver.yam
 
 ### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
 
+```bash
+kubectl get deployment -n vmware-system-csi
 
+# NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+# vsphere-csi-controller   1/1     1            1           20h
+
+kubectl get daemonsets vsphere-csi-node -n vmware-system-csi
+# NAME               DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+# vsphere-csi-node   3         3         3       3            3           kubernetes.io/os=linux   20h
+
+kubectl describe csidrivers
+
+# Name:         csi.vsphere.vmware.com
+# Namespace:    
+# Labels:       <none>
+# Annotations:  <none>
+# API Version:  storage.k8s.io/v1
+# Kind:         CSIDriver
+# Metadata:
+#   Creation Timestamp:  2023-12-07T12:55:42Z
+#   Resource Version:    8503559
+#   UID:                 4ac99d94-1cab-44e3-841d-857eb6ab12b7
+# Spec:
+#   Attach Required:     true
+#   Fs Group Policy:     ReadWriteOnceWithFSType
+#   Pod Info On Mount:   false
+#   Requires Republish:  false
+#   Se Linux Mount:      false
+#   Storage Capacity:    false
+#   Volume Lifecycle Modes:
+#     Persistent
+# Events:  <none>
+
+kubectl get CSINode
+
+# NAME              DRIVERS   AGE
+# <k8s-worker1-name>   1         22d
+# <k8s-worker2-name>   1         22d
+# <k8s-worker3-name>   1         22d
+```
