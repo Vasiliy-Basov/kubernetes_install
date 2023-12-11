@@ -380,6 +380,12 @@ https://kube-vip.io/docs/usage/cloud-provider/
 kubectl apply -f https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
 kubectl create configmap -n kube-system kubevip --from-literal range-global=172.18.7.70-172.18.7.72
 ```
+или сачала скачиваем локально
+```bash
+curl -o kube-vip-cloud-controller.yaml https://raw.githubusercontent.com/kube-vip/kube-vip-cloud-provider/main/manifest/kube-vip-cloud-controller.yaml
+kubectl apply -f kube-vip-cloud-controller.yaml
+kubectl create configmap -n kube-system kubevip --from-literal range-global=172.18.7.70-172.18.7.72
+```
 
 ## Install Ingress-nginx
 https://kubernetes.github.io/ingress-nginx/deploy/
@@ -455,7 +461,13 @@ nano config.toml
 sudo systemctl restart containerd
 ```
 
+## Закидываем images на insecure local registry
 
+```bash
+nerdctl pull ghcr.io/kube-vip/kube-vip-cloud-provider:v0.0.7
+nerdctl tag 07bc28af895d registry.local/kube-vip/kube-vip-cloud-provider:v0.0.7
+nerdctl push registry.local/kube-vip/kube-vip-cloud-provider:v0.0.7 --insecure-registry
+```
 
 ## Integration with VMWare
 https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
@@ -680,3 +692,179 @@ kubectl get CSINode
 # <k8s-worker2-name>   1         22d
 # <k8s-worker3-name>   1         22d
 ```
+
+## Использование vSphere Container Storage Plug-in
+
+### Dynamicaly Provision a Block Volume
+
+Создаем VM Storage Policies в vCenter
+
+Policies and Profiles - VM Storage Policies - Create   
+Имя - Enable rules for "VMFS" storage - выбираем VMFS Rules  
+
+Создаем Storage class
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: ssd-local-sztu-esxi-06
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: csi.vsphere.vmware.com
+allowVolumeExpansion: true # Optional: only applicable to vSphere 7.0U1 and above
+parameters:
+  datastoreurl: "ds:///vmfs/volumes/19817ehd87edhn987-h198h2d987h9n"
+  storagepolicyname: "Kuber-VMFS"
+  csi.storage.k8s.io/fstype: ext4
+```
+```bash
+kubectl create -f ssd-local-storageclass.yaml
+kubectl get storageclass
+```
+
+Проверяем что все работает
+
+Создаем сервис
+
+mongodb-service.yaml  
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  labels:
+    name: mongodb-service
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
+  selector:
+    role: mongo
+```
+
+```bash
+kubectl create -f mongodb-service.yaml
+```
+
+```bash
+# Генерируем 741 случайный байт, кодируем их в формат Base64 и записывает результат в файл с именем key.txt
+openssl rand -base64 741 > key.txt
+# Создаем секрет из этого файла
+kubectl create secret generic shared-bootstrap-data --from-file=internal-auth-mongodb-keyfile=key.txt
+```
+
+Создаем Statefulset  
+Меняем image на local regitry, прописываем storage class
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongod
+spec:
+  serviceName: mongodb-service
+  replicas: 2
+  selector:
+    matchLabels:
+      role: mongo
+      environment: test
+      replicaset: MainRepSet
+  template:
+    metadata:
+      labels:
+        role: mongo
+        environment: test
+        replicaset: MainRepSet
+    spec:
+      containers:
+      - name: mongod-container
+        image: registry.local/mongo/mongo:3.4
+        command:
+        - "numactl"
+        - "--interleave=all"
+        - "mongod"
+        - "--bind_ip"
+        - "0.0.0.0"
+        - "--replSet"
+        - "MainRepSet"
+        - "--auth"
+        - "--clusterAuthMode"
+        - "keyFile"
+        - "--keyFile"
+        - "/etc/secrets-volume/internal-auth-mongodb-keyfile"
+        - "--setParameter"
+        - "authenticationMechanisms=SCRAM-SHA-1"
+        resources:
+          requests:
+            cpu: 0.2
+            memory: 200Mi
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: secrets-volume
+          readOnly: true
+          mountPath: /etc/secrets-volume
+        - name: mongodb-persistent-storage-claim
+          mountPath: /data/db
+      volumes:
+      - name: secrets-volume
+        secret:
+          secretName: shared-bootstrap-data
+          defaultMode: 256
+  volumeClaimTemplates:
+  - metadata:
+      name: mongodb-persistent-storage-claim
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "ssd-local"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+```
+```bash
+kubectl create -f mongodb-statefulset.yaml
+# Смотрим
+kubectl get statefulset mongod
+kubectl get pod -l role=mongo
+kubectl get pvc
+```
+
+Инициируем `Replica Set` для MongoDB.  
+`Replica Set` - это механизм репликации MongoDB, который предоставляет высокую доступность и отказоустойчивость. 
+В данном случае создается `Replica Set` с именем "MainRepSet" и двумя членами.
+
+- `_id: "MainRepSet"`: Задает идентификатор `Replica Set`. В данном случае, он установлен в "MainRepSet".
+- `version: 1`: Указывает версию конфигурации `Replica Set`.
+- `members: [...]`: Здесь определены члены `Replica Set`, каждый из которых представлен объектом в массиве. В данном случае у нас два члена (mongod-0, mongod-1) с идентификаторами _id 0 и 1 соответственно, и адресами хостов и портами, на которых работают MongoDB:
+- { _id: 0, host : "mongod-0.mongodb-service.default.svc.cluster.local:27017" }
+- { _id: 1, host : "mongod-1.mongodb-service.default.svc.cluster.local:27017" }
+
+  Когда эта команда выполняется, `MongoDB` инициирует `Replica Set` с указанными параметрами, начиная процесс выбора `Primary` узла и настройки репликации между членами `Replica Set`
+
+```bash
+kubectl exec -it mongod-0 -c mongod-container bash
+root@mongod-0:/# mongo
+MongoDB shell version v3.4.24
+connecting to: mongodb://127.0.0.1:27017
+MongoDB server version: 3.4.24
+Welcome to the MongoDB shell.
+For interactive help, type "help".
+For more comprehensive documentation, see
+        http://docs.mongodb.org/
+Questions? Try the support group
+        http://groups.google.com/group/mongodb-user
+> rs.initiate({_id: "MainRepSet", version: 1, members: [
+... { _id: 0, host : "mongod-0.mongodb-service.default.svc.cluster.local:27017" },
+... { _id: 1, host : "mongod-1.mongodb-service.default.svc.cluster.local:27017" }
+...  ]});
+# Должны получить ответ
+{ "ok" : 1 }
+```
+
+### Проверяем что vmfs выделились в VMWare
+
+Datacenter → Monitor → Cloud Native Storage → Container Volumes
+Смотрим что появились наши запрошенные pv

@@ -5,3 +5,5 @@ ansible/kubespray/inventory/*/credentials/
 !ansible/kubespray/inventory/
 .vscode/
 VMwareCSiPlugin/*
+mongotest/key.txt
+gitlab/gitlab
