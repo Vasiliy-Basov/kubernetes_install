@@ -1,12 +1,22 @@
 # Gitlab Install
 
+
+
 ## Change Ingress Options
 
-add --set tcp.22="gitlab/mygitlab-gitlab-shell:22"
+add --set tcp.22="gitlab/mygitlab-gitlab-shell:22"  
+
 https://kubernetes.github.io/ingress-nginx/deploy/
 ```bash
 helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true --set tcp.22="gitlab/mygitlab-gitlab-shell:22"
 ```
+
+## Set reclaim Policy to Storage Class
+Set reclaimPolicy to Retain on Storage Class
+
+```
+```
+
 
 ```bash
 helm repo add gitlab https://charts.gitlab.io/
