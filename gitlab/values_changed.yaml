@@ -75,10 +75,10 @@ gitlab:
     image:
       repository: registry.local/gitlab-org/build/cng/gitlab-shell
       tag: v16.6.1
-  gitlab-kas:
+  kas:
     image:
       repository: registry.local/gitlab-org/build/cng/gitlab-kas
-      tag: v16.6.1
+      tag: v16.6.0
   mailroom:
     image:
       repository: registry.local/gitlab-org/build/cng/gitlab-mailroom
@@ -134,8 +134,9 @@ postgresql:
 
 prometheus:
   server:
-    repository: registry.local/prometheus/prometheus
-    tag: v2.39.1
+    image:
+      repository: registry.local/prometheus/prometheus
+      tag: v2.38.0
   configmapReload:
     prometheus:
       image:
