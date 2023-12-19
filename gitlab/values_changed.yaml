@@ -75,10 +75,6 @@ gitlab:
     image:
       repository: registry.local/gitlab-org/build/cng/gitlab-shell
       tag: v16.6.1
-  kas:
-    image:
-      repository: registry.local/gitlab-org/build/cng/gitlab-kas
-      tag: v16.6.0
   mailroom:
     image:
       repository: registry.local/gitlab-org/build/cng/gitlab-mailroom
@@ -104,9 +100,16 @@ gitlab:
       repository: registry.local/gitlab-org/build/cng/gitlab-webservice-ce
       tag: v16.6.1
     workhorse:
-      image: registry.local/gitlab-org/build/cnggitlab-workhorse-ce
+      image: registry.local/gitlab-org/build/cng/gitlab-workhorse-ce
       tag: v16.6.1
-
+  gitlab-kas:
+    image:
+      repository: registry.local/gitlab-org/build/cng/gitlab-kas
+      tag: v16.6.0
+  kas:
+    image:
+      repository: registry.local/gitlab-org/build/cng/gitlab-kas
+      tag: v16.6.0
 # --- Charts from requirements.yaml ---
 
 minio:
@@ -118,7 +121,7 @@ minio:
 
 registry:
   image:
-    repository: registry.local/gitlab-org/build/cnggitlab-container-registry
+    repository: registry.local/gitlab-org/build/cng/gitlab-container-registry
     tag: 'v3.86.1-gitlab'
 
 postgresql:
