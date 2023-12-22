@@ -24,12 +24,24 @@ global:
   ingress:
     configureCertmanager: false
     class: nginx
+# !!! Если нужно собирать docker images: runner д.б. запущен с опцией --privileged
+# Предварительно нужно создать gitlab-runner-certs secret см. /kubernetes_install/README.md
 gitlab-runner:
+  gitlabUrl: https://gitlab.gitlab.local/
+  certsSecretName: gitlab-runner-certs
+  securityContext:
+    allowPrivilegeEscalation: true
+    privileged: true
   runners:
     privileged: true
   image:
     registry: registry.local
     image: gitlab-org/gitlab-runner
+  # Прописываем в /etc/hosts pod наш gitlab сервер
+  hostAliases:
+    - ip: "172.18.7.70"
+      hostnames:
+      - "gitlab.gitlab.local"
 nginx-ingress:
   enabled: false
 #  controller: *custom
