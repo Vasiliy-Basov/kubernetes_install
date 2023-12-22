@@ -7,3 +7,5 @@ ansible/kubespray/inventory/*/credentials/
 VMwareCSiPlugin/*
 mongotest/key.txt
 gitlab/gitlab
+kube-prometheus-stack/*
+!kube-prometheus-stack/changed_values.yaml

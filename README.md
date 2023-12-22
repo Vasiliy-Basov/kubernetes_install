@@ -1053,3 +1053,4 @@ kubectl create secret generic gitlab-runner-certs -n gitlab --from-file=gitlab.g
 # Install
 helm upgrade --install gitlab gitlab/ --timeout 600s --create-namespace -n gitlab -f /home/master/projects/kubernetes_install/gitlab/values_changed.yaml
 ```
+
