@@ -1,0 +1,14 @@
+# Создаем namespace c ограничениями по созданию подов
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    # Какую версию ограничений применять (из какой версии кластера например 1.27)
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    # Какую версию ограничений применять (из какой версии кластера например 1.27)
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    # Какую версию ограничений применять (из какой версии кластера например 1.27)
+    pod-security.kubernetes.io/warn-version: latest
