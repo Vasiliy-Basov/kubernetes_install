@@ -502,7 +502,7 @@ controller:
   electionID: ingress-controller-leader
 
   replicaCount: 2
-
+  priorityClassName: "system-cluster-critical"
 ## If true, create & use Pod Security Policy resources
 ## https://kubernetes.io/docs/concepts/policy/pod-security-policy/
 podSecurityPolicy:
