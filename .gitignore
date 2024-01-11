@@ -9,3 +9,5 @@ mongotest/key.txt
 gitlab/gitlab
 kube-prometheus-stack/*
 !kube-prometheus-stack/changed_values.yaml
+metrics-server/*
+!metrics-server/changed_values.yaml

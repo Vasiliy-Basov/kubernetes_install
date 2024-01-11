@@ -1054,3 +1054,11 @@ kubectl create secret generic gitlab-runner-certs -n gitlab --from-file=gitlab.g
 helm upgrade --install gitlab gitlab/ --timeout 600s --create-namespace -n gitlab -f /home/master/projects/kubernetes_install/gitlab/values_changed.yaml
 ```
 
+## Metrics Server Install
+
+```bash
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+# Download Chart Localy
+helm pull metrics-server/metrics-server --untar
+helm upgrade --install metrics-server metrics-server/ --create-namespace -n metricsserver -f /home/master/projects/kubernetes_install/metrics-server/changed_values.yaml
+```
