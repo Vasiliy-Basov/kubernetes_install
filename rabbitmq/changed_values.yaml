@@ -1,0 +1,52 @@
+
+auth:
+  ## @param auth.username RabbitMQ application username
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
+  ##
+  username: user
+  ## @param auth.password RabbitMQ application password
+  ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
+  ## Пароль от админки rabbit
+  password: "rrabit"
+
+## Configure the ingress resource that allows you to access the
+## RabbitMQ installation. Set up the URL
+## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
+##
+ingress:
+  ## @param ingress.enabled Enable ingress resource for Management console
+  ##
+  enabled: true
+  hostname: rabbitmq.local
+  ingressClassName: "nginx"
+
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  storageClass: "local-storage-rabbitmq"
+
+
+persistence:
+  ## @param persistence.enabled Enable RabbitMQ data persistence using PVC
+  ##
+  enabled: true
+  ## @param persistence.storageClass PVC Storage Class for RabbitMQ data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: "local-storage-rabbitmq"
+
+# Указываем количество реплик
+## @param replicaCount Number of RabbitMQ replicas to deploy
+##
+replicaCount: 1
+## @param schedulerName Use an alternate scheduler, e.g. "stork".
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##

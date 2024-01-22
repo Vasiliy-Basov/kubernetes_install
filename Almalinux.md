@@ -615,3 +615,45 @@ echo 'complete -F __start_kubectl k' >>~/.bashrc
 ```
 
 Выходим из sudo-сессии root, заходим назад, чтобы профиль перечитался.
+
+Создаем StorageClass для Local Storage
+
+```yaml
+# https://kubernetes.io/docs/concepts/storage/storage-classes/#local
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage-rabbitmq
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+```
+
+Создаем PersistentVolume для StorageClass
+```yaml
+# https://kubernetes.io/docs/concepts/storage/volumes/#local
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-manual-rabbitmq
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-storage-rabbitmq
+  local:
+    path: /mnt/data/rabbitmq ## this folder need exist on your node. Keep in minds also who have permissions to folder. Used tmp as it have 3x rwx
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - kub-worker-01
+```

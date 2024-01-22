@@ -40,3 +40,80 @@ elasticsearch
 etcd  
 consul  
 ZooKeeper
+
+# Install RabbitMQ
+## Скачиваем чарт локально
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm search repo bitnami/rabbitmq
+# Меняем в .\kubernetes_install\rabbitmq\changed_values.yaml нужные нам values ingress, password etc
+helm upgrade --install --wait rabbitmq --create-namespace --namespace rabbitmq ./rabbitmq/rabbitmq -f ./rabbitmq/changed_values.yaml
+# Если нету StorageClass и PersistentVolume то создаем (Можно локально)
+```
+
+Создаем StorageClass для Local Storage
+
+```yaml
+# https://kubernetes.io/docs/concepts/storage/storage-classes/#local
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage-rabbitmq
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+```
+
+Создаем PersistentVolume для StorageClass
+```yaml
+# https://kubernetes.io/docs/concepts/storage/volumes/#local
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-manual-rabbitmq
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-storage-rabbitmq
+  local:
+    path: /mnt/data/rabbitmq ## this folder need exist on your node. Keep in minds also who have permissions to folder. Used tmp as it have 3x rwx
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - kub-worker-01
+```
+
+Прописываем в /etc/hosts 192.168.0.151 rabbitmq.local
+Проверяем
+
+Если у нас несколько реплик, то удаление пода, не должно повлиять на работу кластера. Он должен перезапуститься с помощью StatefulSet.
+
+# PostgreSQL
+Так как PostgreSQL не Cloud Native для него используются операторы, которые следят за состоянием кластера и взаимодействуют с пользователем
+
+Оператор для PostgreSQL - Stolon, Это Claud Native Manager для PostgreSQL. Создает кластер не только в kubernetes но и в других системах оркестрации.
+
+Особенности
+- Потоковая репликация PostgreSQL
+- Интегрируется с kubernetes
+- Хранит свое состояние в etcd, consul или kubernetes API
+- Синхронная и асинхронная репликация
+- Установка кластера за минуты
+- Умеет делать PointinTimeRecovery
+- Автоматически настраивает новые члены кластера
+- Использует pg_rewind для быстрой повторной синхронизации
+
+Подобная конфигурация позволяет хорошо автоматизировать кластер PostgreSQL
+
+# CockroachDB
+
