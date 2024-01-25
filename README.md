@@ -110,6 +110,16 @@ network:
       dhcp4: false
       addresses:
       - 172.18.7.60/23
+
+sudo netplan apply
+# На ошибку не обращаем внимание WARNING:root:Cannot call Open vSwitch: ovsdb-server.service is not running.
+# Чтобы отключить интерфейс
+network:
+  version: 2
+  ethernets:
+    ens160:
+      dhcp4: false
+      optional: true
 ```
 
 ## Настройка /etc/hosts
