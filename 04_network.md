@@ -122,6 +122,11 @@ kubectl get node
 kubectl get po -A
 ```
 
+## Посмотреть и поменять настройки daemonset
+kubectl get daemonset calico-node -n kube-system -o yaml > calicodaemonset.yaml
+Меняем  
+Restart pod  
+
 # Network Policy Сетевые политики
 Запрещено все что не разрешено  
 Пока сетевых политик нету все работает  
