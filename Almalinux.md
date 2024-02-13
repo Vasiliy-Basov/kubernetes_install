@@ -657,3 +657,14 @@ spec:
           values:
           - kub-worker-01
 ```
+
+
+## Errors
+
+Если видим ошибку 
+
+```bash
+Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox : plugin type="calico" failed (add): error getting ClusterInformation: connection is unauthorized: Unauthorized
+```
+
+То перезагружаем calico pod, или ноду.

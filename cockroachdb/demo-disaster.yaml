@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cockroachdb-client-disaster
+  labels:
+    app: cockroachdb-client-disaster
+spec:
+  serviceAccountName: cockroachdb
+  containers:
+  - name: cockroachdb-client-disaster
+    image: centosadmin/disaster-test-cockroachdb:v0.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: client-certs
+      mountPath: /cockroach-certs
+  # This pod isn't doing anything important, so don't bother waiting to terminate it.
+  terminationGracePeriodSeconds: 0
+  volumes:
+  - name: client-certs
+    secret:
+      secretName: cockroachdb-client-secret
+      items:
+      - key: ca.crt
+        path: ca.crt
+      - key: tls.crt
+        path: client.root.crt
+      - key: tls.key
+        path: client.root.key
+        mode: 0400
