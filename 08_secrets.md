@@ -149,6 +149,7 @@ stringData:
 Практика: 
 
 # Установка Hashicorp Vault
+Интеграция Vault и Kubernetes
 
 ## Устанавливаем оператор Vault от BanzaiCloud
 
@@ -191,7 +192,136 @@ kubernetes_install/vault/cr.yaml
                   port:
                     number: 8200
 
+  # Vault будет хранить все данные внутри файла
+  # Use local disk to store Vault file data, see config section.
+  volumes:
+    - name: vault-file
+      persistentVolumeClaim:
+        claimName: vault-file
 
+  volumeMounts:
+    - name: vault-file
+      mountPath: /vault/file
+
+# В продакшене лучше так не делать, все 5 ключей + токен root с правами на vault будут записаны в секрет который будет лежать в кластере в namespace default.
+  # Describe where you would like to store the Vault unseal keys and root token.
+  unsealConfig:
+    options:
+      # The preFlightChecks flag enables unseal and root token storage tests
+      # This is true by default
+      preFlightChecks: true
+    kubernetes:
+      secretNamespace: default
+
+  # See: https://banzaicloud.com/docs/bank-vaults/cli-tool/#example-external-vault-configuration
+  # The repository also contains a lot examples in the deploy/ and operator/deploy directories.
+  # Раздел с конфигурацией
+  externalConfig:
+    policies:
+      - name: allow_secrets
+        rules: path "secret/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+          }
+      - name: allow_prod_read
+        rules: path "prod/*" {
+          capabilities = ["read", "list"]
+          }
+      - name: allow_pki
+        rules: path "pki/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+          }
+    auth:
+      # Vault умеет аутентифицировать пользователей kubernetes.
+      - type: kubernetes
+        config:
+          issuer: https://kubernetes.default.svc.cluster.local
+        # Роли определяют какие именно секреты можно читать
+        roles:
+          # Allow every pod in the default namespace to use the secret kv store
+          - name: default
+            # К каким сервис аккаунтам разрешен доступ:
+            bound_service_account_names: ["default", "vault-secrets-webhook", "vault"]
+            bound_service_account_namespaces: ["default", "vswh"]
+            policies: ["allow_secrets", "allow_pki"]
+            ttl: 1h
+          - name: prod
+            bound_service_account_names: ["*"]
+            bound_service_account_namespaces: ["production"]
+            policies: ["allow_prod_read", "allow_pki"]
+            ttl: 1h
+# Те места в которых можно хранить секретную информацию
+    secrets:
+      # Позволяет хранить секреты и их изменения. (ver 2)
+      # type - key value
+      - path: secret
+        type: kv
+        description: General secrets.
+        options:
+          version: 2
+
+      - path: prod
+        type: kv
+        description: Production secrets.
+        options:
+          version: 2
+
+      - type: pki
+        description: Vault PKI Backend
+        config:
+          default_lease_ttl: 168h
+          max_lease_ttl: 720h
+        configuration:
+          config:
+          - name: urls
+            issuing_certificates: https://vault.default:8200/v1/pki/ca
+            crl_distribution_points: https://vault.default:8200/v1/pki/crl
+          root/generate:
+          - name: internal
+            common_name: vault.default
+          roles:
+          - name: default
+            allowed_domains: localhost,pod,svc,default
+            allow_subdomains: true
+            generate_lease: true
+            ttl: 1m
+
+    startupSecrets:
+      - type: kv
+        # Секрет храниться по этому пути
+        # Если секрет 2 версии то добавляем в путь /data/
+        path: secret/data/accounts/aws
+        data:
+          # В этом секрете 2 ключа
+          data:
+            AWS_ACCESS_KEY_ID: secretId
+            AWS_SECRET_ACCESS_KEY: s3cr3t
+      - type: kv
+        path: secret/data/dockerrepo
+        data:
+          data:
+            DOCKER_REPO_USER: dockerrepouser
+            DOCKER_REPO_PASSWORD: dockerrepopassword
+      - type: kv
+        path: secret/data/mysql
+        data:
+          data:
+            MYSQL_ROOT_PASSWORD: s3cr3t
+            MYSQL_PASSWORD: 3xtr3ms3cr3t
+      - type: kv
+        path: prod/data/accounts/aws
+        data:
+          data:
+            AWS_ACCESS_KEY_ID: aws_prod_key_id
+            AWS_SECRET_ACCESS_KEY: aws_prod_secret_key
+
+# Переменные окружения которые в vault запускаются
+  vaultEnvsConfig:
+    - name: VAULT_LOG_LEVEL
+      value: debug
+    - name: VAULT_STORAGE_FILE
+      value: "/vault/file"
+
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -205,3 +335,11 @@ spec:
     requests:
       storage: 1Gi
 ```
+
+## Манифест RBAC
+/kubernetes_install/vault/rbac.yaml
+1. Создаем ServiceAccount под именем vault  
+2. Создается роль vault c правами на чтение секретов, чтение pods  
+3. Создаем ClusterRole Binding Который связывает системную auth-delegator с нашим ServiceAccount vault в namespace default. Это нужно чтобы vault запущенный в pod-е он видел что он запущен внутри пода, и с токеном от ServiceAccount который прописан у него в манифесте шлет запросы в API для валидации тех токенов которые к нему приходят с запросами. Для того чтобы api сервер эти запросы принимал проверял и отдавал ответ нужна эта кластерная RoleBinding которая дает права нашему ServiceAccount: Vault на проверку токенов. Если бы этого не было то не работала бы интеграция vault с kubernetes.
+
+
