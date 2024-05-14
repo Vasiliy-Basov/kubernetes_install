@@ -1,4 +1,6 @@
 controller:
+  image:
+    registry: 172.18.7.53:30500
   # Файл конфигурации, записывает в configmap
   config:
     # Не нужно в access-log писать запросы к health check-ам (kubelet раз в 15 секунд делает эти запросы)
@@ -23,16 +25,19 @@ controller:
   # since CNI and hostport don't mix yet. Can be deprecated once https://github.com/kubernetes/kubernetes/issues/23920
   # is merged
   # Внутри подов прописан сетевой namespace узла, (Более простой и быстрый вариант если не настроен Load Balancer)
-  hostNetwork: true
-
+  #  hostNetwork: true
+  service:
+    loadBalancerIP: "172.18.7.70"
+  metrics:
+    # if this port is changed, change healthz-port: in extraArgs: accordingly
+    enabled: true
   # -- Election ID to use for status update
   electionID: ingress-controller-leader
-
   replicaCount: 1
   # Выставляем приоритет для того чтобы не вырубило nginx controller если не будет хватать ресурсов
   # kubectl get pc
   priorityClassName: "system-cluster-critical"
 ## If true, create & use Pod Security Policy resources
 ## https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-podSecurityPolicy:
-  enabled: true
+# podSecurityPolicy:
+#   enabled: true
