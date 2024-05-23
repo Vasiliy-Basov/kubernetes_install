@@ -58,10 +58,22 @@ services:
 ```bash
 sudo nano /etc/docker/daemon.json
 ```
-
+Настраиваем сети и бриджы так чтобы они не конфликтовали с нашими сетями.
 ```json
 {
-    "insecure-registries": ["192.168.0.19:5000"]
+  "insecure-registries": ["172.18.7.76:5000"],
+  "bip": "173.40.1.1/16",
+  "fixed-cidr": "173.40.1.1/24",
+  "default-address-pools": [
+    {
+      "base": "173.30.0.0/16",
+      "size": 24
+    },
+    {
+      "base": "173.31.0.0/16",
+      "size": 24
+    }
+  ]
 }
 ```
 

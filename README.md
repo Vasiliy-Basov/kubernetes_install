@@ -703,6 +703,14 @@ kubectl get CSINode
 # <k8s-worker3-name>   1         22d
 ```
 
+### Ошибки
+
+Back-off restarting failed container vsphere-csi-controller in pod vsphere-csi-controller-b9476d748-8sw5s_vmware-system-csi(494b08e6-4c09-4a83-aff0-9bf33eaa2580)
+и
+Still connecting to unix:///csi/csi.sock
+
+Смотрим логи контейнера vsphere-csi-controller если там пишет что не правильные логин и пароль то меняем пароль в vcenter или в секрете. Пароль живет 3 месяца по default policy.
+
 ## Использование vSphere Container Storage Plug-in
 
 ### Dynamicaly Provision a Block Volume
