@@ -511,6 +511,14 @@ Syncer метаданных отвечает за передачу метада�
 - Сервер vCenter восстанавливается до точки восстановления из резервной копии.
 - etcd восстанавливается до точки восстановления из резервной копии.
 
+## Подготавливаем учетку
+Добавляем роли в vcenter
+https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
+
+Создаем пользователя из под которого будет работать plug-in 
+Добавляем permissions на нужные объекты например заходим Datastore - Выбираем нужный datastore - Permissions - Add - Прописываем пользователя и выбираем созданную роль CNS-Datastore.  
+Результат можем посмотреть в Administration - Roles - CNS Datastore - Usage.
+
 ## Устанавливаем taints на все ноды 
 
 When the kubelet is started with an external cloud provider, this taint is set on a node to mark it as unusable. After a controller from the cloud-controller-manager initializes this node, the kubelet removes this taint.
@@ -887,6 +895,62 @@ Questions? Try the support group
 Datacenter → Monitor → Cloud Native Storage → Container Volumes
 Смотрим что появились наши запрошенные pv
 
+## Миграция container volumes (pvc)
+### Установка CNS Manager
+https://github.com/vmware-samples/cloud-native-storage-self-service-manager
+https://github.com/vmware-samples/cloud-native-storage-self-service-manager/blob/main/docs/book/deployment/basicauth.md
+
+```bash
+git clone https://github.com/vmware-samples/cloud-native-storage-self-service-manager.git
+# Берем kubeconfig нашего кластера, например ~/.kube/config копируем и кладем в каталог ../config/ под каким-нибудь именем вместо файла sv_kubeconfig
+# Меняем файл vc_creds.json с аутентификационными данными для нашего vcenter в таком виде:
+```
+```json
+{
+    "vc": "1.1.1.1",
+    "user": "Administrator@VSPHERE.LOCAL",
+    "password": "SomePassword"
+}
+```
+
+.gitignore:
+```
+/config/
+install_commands
+.gitignore
+/deploy/basic-auth/
+```
+
+```bash
+# Ставим 
+./deploy.sh cns-manager ../config/sv_kubeconfig ../config/vc_creds.json LoadBalancerIP:30008 basicauth false 'Administrator' 'SomePasssword'
+```
+
+Если хотим что то изменить то 
+Also if you need to change kubeconfig or VC creds after the deployment script has run, then you can either:
+a. Recreate the secrets sv-kubeconfig & vc-creds created from these files and restart the cns- manager deployment, OR
+b. Delete the namespace and run the deployment script again.
+
+Пробуем зайти  
+http://LoadBalancerIP:30008/ui/
+
+### Как работать
+
+Pvc посмотреть можно в vcenter - Monitor - Cloud Native Storage - Container Volumes  
+В kubernetes через Lens Storage - Persistent Volumes
+
+http://LoadBalancerIP:30008/ui/
+DatastoreOperations
+Get - Вводим datacenter and datastore
+Получаем список наших datastores  
+Сопостовляем нужный нам fcdName и fcdId  
+В /migratevolumes прописываем  
+datacenter  
+targetDatastore
+fcdIdsToMigrate
+
+Execute  
+Проверяем что все смигрировалось.  
 
 ## Установка GitlabCI
 
