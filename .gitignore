@@ -15,4 +15,4 @@ rabbitmq/rabbitmq/*
 !rabbitmq/changed_values.yaml
 cockroachdb/cockroachdb/
 ingress-nginx/ingress-nginx/*
-cloud-native-storage-self-service-manager/
+cloud-native-storage-self-service-manager/*
