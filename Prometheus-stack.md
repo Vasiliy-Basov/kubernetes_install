@@ -2,6 +2,7 @@
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm search repo prometheus-community
 helm pull prometheus-community/kube-prometheus-stack --untar
 ```
 

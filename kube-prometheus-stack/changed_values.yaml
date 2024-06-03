@@ -4,7 +4,9 @@ global:
   ##
   imageRegistry: "registry.local"
 
-
+windowsMonitoring:
+  ## Deploys the windows-exporter and Windows-specific dashboards and rules (job name must be 'windows-exporter')
+  enabled: true
 
 alertmanager:
 
