@@ -1,6 +1,12 @@
 controller:
   image:
-    registry: 172.18.7.53:30500
+    registry: registry.local
+    digest: sha256:68996f219b1f0eae76b40ad95df9246dc5615c1fe271083a3a414f8bf576fc3a
+  admissionWebhooks:
+    patch:
+      image:
+        registry: registry.local
+        digest: sha256:5ea4f54bb0ffce9fda8d3aa589b9c44ae2c4f37b1581656e30c16110a3756187
   # Файл конфигурации, записывает в configmap
   config:
     # Не нужно в access-log писать запросы к health check-ам (kubelet раз в 15 секунд делает эти запросы)
@@ -41,3 +47,13 @@ controller:
 ## https://kubernetes.io/docs/concepts/policy/pod-security-policy/
 # podSecurityPolicy:
 #   enabled: true
+
+# -- TCP service key-value pairs
+## Ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/exposing-tcp-udp-services.md
+##
+tcp:
+ "22": "gitlab/gitlab-gitlab-shell:22"
+
+# -- UDP service key-value pairs
+## Ref: https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/exposing-tcp-udp-services.md
+##

@@ -399,11 +399,30 @@ kubectl create configmap -n kube-system kubevip --from-literal range-global=172.
 
 ## Install Ingress-nginx
 https://kubernetes.github.io/ingress-nginx/deploy/
+
+
+Посмотреть как называется service gitlab (опция для гитлаб)
+add --set tcp.22="gitlab/gitlab-gitlab-shell:22"  
+
+https://kubernetes.github.io/ingress-nginx/deploy/
+
 ```bash
-helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true
+# Скачать чарт локально
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm search repo ingress-nginx
+helm pull ingress-nginx/ingress-nginx --untar
+```
+```bash
+helm upgrade --install ingress-nginx /home/appuser/projects/kubernetes_install/ingress-nginx/ingress-nginx/ --namespace ingress-nginx --create-namespace -f /home/appuser/projects/kubernetes_install/ingress-nginx/nginx-ingress-changed.yaml
 ```
 
-## Создаем ingress для registry.local
+```bash
+# Посмотреть примененные параметры
+helm get values ingress-nginx --namespace ingress-nginx
+```
+
+## Создаем ingress для registry.local внутри kubernetes
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -551,7 +570,7 @@ metadata:
   labels:
     vsphere-cpi-infra: service-account
     component: cloud-controller-manager
-  namespace: kube-system
+update  namespace: kube-system
 ---
 apiVersion: v1
 kind: Secret

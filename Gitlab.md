@@ -1,12 +1,21 @@
 # Gitlab Install
 
 ## Change Ingress Options
+Посмотреть как называется service gitlab
 
-add --set tcp.22="gitlab/mygitlab-gitlab-shell:22"  
+add --set tcp.22="gitlab/gitlab-gitlab-shell:22"  
 
 https://kubernetes.github.io/ingress-nginx/deploy/
+
 ```bash
-helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.service.loadBalancerIP=172.18.7.70 --set controller.metrics.enabled=true --set tcp.22="gitlab/mygitlab-gitlab-shell:22"
+# Скачать чарт локально
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm search repo ingress-nginx
+helm pull ingress-nginx/ingress-nginx --untar
+```
+```bash
+helm upgrade --install ingress-nginx /home/appuser/projects/kubernetes_install/ingress-nginx/ingress-nginx/ --namespace ingress-nginx --create-namespace -f /home/appuser/projects/kubernetes_install/ingress-nginx/nginx-ingress-changed.yaml
 ```
 
 ## Set reclaim Policy to Storage Class
@@ -213,4 +222,19 @@ helm upgrade --install gitlab gitlab/ --timeout 600s --create-namespace -n gitla
 
 # Get Gitlab initial password
 kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' -n gitlab | base64 --decode ; echo
+```
+
+
+```bash
+# Добавить сертификат в доверенные (на клиентской машине) в случае самоподписанного сертификата у сервера gitlab для того чтобы не было ошибки 
+# git clone https://gitlab.gitlab.local/deploy/prometheus.git
+# Cloning into 'prometheus'...
+# fatal: unable to access 'https://gitlab.gitlab.local/deploy/prometheus.git/': server certificate verification failed. CAfile: none CRLfile: none
+sudo apt-get update
+sudo apt install libcurl4-openssl-dev
+hostname=gitlab.gitlab.local
+port=443
+trust_cert_file_location=`curl-config --ca`
+
+sudo bash -c "echo -n | openssl s_client -showcerts -connect $hostname:$port -servername $hostname  2>/dev/null  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' >> $trust_cert_file_location"
 ```
