@@ -145,7 +145,7 @@ ff02::2 ip6-allrouters
 ansible-playbook --limit all ./playbooks/ubuntuhosts.yaml --private-key /home/master/.ssh/id_ed25519 -K
 ```
 
-# настройки сети (dns)
+## настройки сети (dns)
 ```bash
 sudo cat /etc/resolv.conf
 # Меняем настройки чтобы /etc/resolv.conf управлялся из файла /etc/netplan/00-installer-config.yaml
@@ -154,7 +154,7 @@ sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 sudo systemctl restart systemd-resolved.service
 ```
 
-# Установка с помощью kubspray
+## Установка с помощью kubspray
 ```bash
 git clone https://github.com/kubernetes-sigs/kubespray.git
 cd kubespray
@@ -198,7 +198,7 @@ kube_node
 calico_rr
 ```
 
-## Настройка group_vars
+### Настройка group_vars
 /home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluster/group_vars  
 
 Изменения которые сделаны
@@ -304,14 +304,14 @@ kube_vip_services_enabled: true
 
 https://kube-vip.io/docs/installation/static/
 
-# Генерация манифеста и помещение его в каталог /etc/kubernetes/manifests/
+### Генерация манифеста и помещение его в каталог /etc/kubernetes/manifests/
 export VIP=172.18.7.60
 export INTERFACE=ens224
 KVVERSION=$(curl -sL https://api.github.com/repos/kube-vip/kube-vip/releases | jq -r ".[0].name")
-# Для containerd (не docker)
+### Для containerd (не docker)
 alias kube-vip="ctr image pull ghcr.io/kube-vip/kube-vip:$KVVERSION; ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:$KVVERSION vip /kube-vip"
 
-# Генерируем манифест:
+### Генерируем манифест:
 kube-vip manifest pod \
     --interface $INTERFACE \
     --address $VIP \
@@ -321,7 +321,7 @@ kube-vip manifest pod \
     --leaderElection | tee /etc/kubernetes/manifests/kube-vip.yaml
 
 
-# Install
+### Install
 ```bash
 source /home/master/projects/kubernetes_install/ansible/kubespray-venv/bin/activate
 # Обновляем все пакеты
@@ -351,7 +351,7 @@ mkdir -p ~/.kube
 cp /home/master/projects/kubernetes_install/ansible/kubespray/inventory/mycluster/artifacts/admin.conf ~/.kube/config
 ```
 
-## Ошибка Error  
+### Ошибка Error  
 
 Проблема возникает при начальной установке или при перезагрузке kubelet  
 Не критично
@@ -377,7 +377,7 @@ systemctl restart containerd
 systemctl restart kubelet
 ```
 
-## Upgrade addons
+### Upgrade addons
 
 ```bash
 ansible-playbook -b -i inventory/mycluster/inventory.ini -u master --become --become-user=root cluster.yml --tags=apps -K
@@ -421,8 +421,8 @@ helm upgrade --install ingress-nginx /home/appuser/projects/kubernetes_install/i
 # Посмотреть примененные параметры
 helm get values ingress-nginx --namespace ingress-nginx
 ```
-
-## Создаем ingress для registry.local внутри kubernetes
+## registry.local
+### Создаем ingress для registry.local внутри kubernetes
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -456,7 +456,7 @@ kubectl apply -f /home/master/projects/kubernetes_install/registry-ingress.yaml
 ```
 
 
-## Прописываем в /etc/hosts registry.local
+### Прописываем в /etc/hosts registry.local
 
 На всех нодах:
 
@@ -464,7 +464,7 @@ kubectl apply -f /home/master/projects/kubernetes_install/registry-ingress.yaml
 registry.local 172.18.7.70 
 ```
 
-## Настраиваем insecure registry
+### Настраиваем insecure registry
 
 На всех нодах
 ```bash
@@ -490,7 +490,7 @@ nano config.toml
 sudo systemctl restart containerd
 ```
 
-## Закидываем images на insecure local registry
+### Закидываем images на insecure local registry
 
 ```bash
 nerdctl pull ghcr.io/kube-vip/kube-vip-cloud-provider:v0.0.7
@@ -530,7 +530,7 @@ Syncer метаданных отвечает за передачу метада�
 - Сервер vCenter восстанавливается до точки восстановления из резервной копии.
 - etcd восстанавливается до точки восстановления из резервной копии.
 
-## Подготавливаем учетку
+### Подготавливаем учетку
 Добавляем роли в vcenter
 https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-vsphere-csp-getting-started/GUID-0AB6E692-AA47-4B6A-8CEA-38B754E16567.html
 
@@ -538,7 +538,7 @@ https://docs.vmware.com/en/VMware-vSphere-Container-Storage-Plug-in/3.0/vmware-v
 Добавляем permissions на нужные объекты например заходим Datastore - Выбираем нужный datastore - Permissions - Add - Прописываем пользователя и выбираем созданную роль CNS-Datastore.  
 Результат можем посмотреть в Administration - Roles - CNS Datastore - Usage.
 
-## Устанавливаем taints на все ноды 
+### Устанавливаем taints на все ноды 
 
 When the kubelet is started with an external cloud provider, this taint is set on a node to mark it as unusable. After a controller from the cloud-controller-manager initializes this node, the kubelet removes this taint.
 
@@ -548,7 +548,7 @@ kubectl taint node <node-name> node.cloudprovider.kubernetes.io/uninitialized=tr
 kubectl describe nodes | egrep "Taints:|Name:"
 ```
 
-## Install vSphere Cloud Provider Interface
+### Install vSphere Cloud Provider Interface
 Download Change and Install vsphere-cloud-controller-manager.yaml
 
 Если версия kubernetes 1.28.x то прописываем
@@ -623,10 +623,10 @@ kubectl apply -f vsphere-cloud-controller-manager.yaml
 rm vsphere-cloud-controller-manager.yaml
 ```
 
-## Deploying the vSphere Container Storage Plug-in on a Native Kubernetes Cluster
+### Deploying the vSphere Container Storage Plug-in on a Native Kubernetes Cluster
 
 
-### Create namespace
+#### Create namespace
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/vsphere-csi-driver/v3.0.0/manifests/vanilla/namespace.yaml
@@ -639,7 +639,7 @@ kubectl describe nodes | egrep "Taints:|Name:"
 kubectl taint nodes <k8s-primary-name> node-role.kubernetes.io/control-plane=:NoSchedule
 ```
 
-### Create secret from file
+#### Create secret from file
 
 csi-vsphere.conf
 ```yaml
@@ -670,7 +670,7 @@ kubectl create secret generic vsphere-config-secret --from-file=csi-vsphere.conf
 kubectl get secret vsphere-config-secret --namespace=vmware-system-csi
 ```
 
-### Устанавливаем в кластер VMWare CSI plug-in
+#### Устанавливаем в кластер VMWare CSI plug-in
 
 Последние версии ищем здесь  
 https://github.com/kubernetes-sigs/vsphere-csi-driver  
@@ -687,7 +687,7 @@ curl -o vsphere-csi-driver.yaml https://raw.githubusercontent.com/kubernetes-sig
 kubectl apply -f /home/master/projects/kubernetes_install/vsphere-csi-driver.yaml
 ```
 
-### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
+#### Verify that the vSphere Container Storage Plug-in has been successfully deployed.
 
 ```bash
 kubectl get deployment -n vmware-system-csi
@@ -970,6 +970,23 @@ fcdIdsToMigrate
 
 Execute  
 Проверяем что все смигрировалось.  
+
+## Перевод нод в режим обслуживания  
+kubectl cordon - помечает ноду как недоступную для scheduler. Новые поды не будут появляться
+kubectl drain - делает сначала kubectl cordon а потом выселяет все поды на другие ноды.
+
+```bash
+# означает перемещение всех запущенных на узле подов на другие узлы. Это может быть полезным при плановом обслуживании узла, таком как обновление операционной системы или Kubernetes.
+# --grace-period 60 Этот флаг определяет период ожидания в секундах перед тем, как Kubernetes начнет принудительное завершение (т.е., удаление) подов
+# --delete-local-data: Этот флаг указывает Kubernetes удалить локальные данные (local data) подов. Локальные данные могут включать в себя временные файлы или другие данные, которые не были смонтированы в Persistent Volumes. Это помогает избежать потери данных при перемещении подов.
+# --ignore-daemonsets: Этот флаг указывает Kubernetes не удалять поды, управляемые DaemonSets. DaemonSets обеспечивают запуск по крайней мере одного экземпляра пода на каждом узле, и игнорирование их позволяет сохранить один экземпляр работающего пода на каждом узле.
+# --force: Этот флаг принудительно завершает (удаляет) поды без ожидания завершения периода ожидания, указанного в --grace-period. Используйте его с осторожностью, так как это может привести к потере данных, если поды не успели нормально завершить свою работу.
+# Эта команда полезна при подготовке узла к обслуживанию или выключению. После выполнения kubectl drain, узел будет пуст, и его можно будет обслуживать или выключать
+kubectl drain kub-worker-01 --grace-period 60 --delete-emptydir-data --ignore-daemonsets --force
+# Возвращение ноды в работу
+kubectl uncordon kub-worker-01
+```
+
 
 ## Установка GitlabCI
 
