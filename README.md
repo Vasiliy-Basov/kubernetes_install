@@ -738,6 +738,24 @@ Still connecting to unix:///csi/csi.sock
 
 Смотрим логи контейнера vsphere-csi-controller если там пишет что не правильные логин и пароль то меняем пароль в vcenter или в секрете. Пароль живет 3 месяца по default policy.
 
+Заходим в vCenter и меняем пароль учетки с помощью которой мы подключались к vCenter и прописывали в файле vsphere-cloud-controller-manager.yaml в секции
+
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vsphere-cloud-secret
+  labels:
+    vsphere-cpi-infra: secret
+    component: cloud-controller-manager
+  namespace: kube-system
+  # NOTE: this is just an example configuration, update with real values based on your environment
+stringData:
+```
+
+можно оставить старый пароль но нужно его ввести.
+
 ## Использование vSphere Container Storage Plug-in
 
 ### Dynamicaly Provision a Block Volume
