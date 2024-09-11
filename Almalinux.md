@@ -658,6 +658,26 @@ spec:
           - kub-worker-01
 ```
 
+# Установка influxdb
+
+```bash
+helm repo add influxdata https://helm.influxdata.com/
+helm repo update
+helm search repo influxdata
+helm pull influxdata/influxdb2 --untar
+kubectl apply -f C:\Projects\kubernetes_install\influxdb\persistantvolume\sc-local-storage.yaml
+kubectl apply -f C:\Projects\kubernetes_install\influxdb\persistantvolume\pv-manual-influxdb.yaml
+helm upgrade --install --wait influxdb --create-namespace --namespace monitoring ./influxdb2/ -f ./changed_values.yaml
+```
+
+# Установка telegraf
+```bash
+helm repo add influxdata https://helm.influxdata.com/
+helm repo update
+helm search repo influxdata
+helm pull influxdata/telegraf --untar
+```
+
 
 ## Errors
 
@@ -668,3 +688,4 @@ Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup n
 ```
 
 То перезагружаем calico pod, или ноду.
+

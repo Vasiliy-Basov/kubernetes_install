@@ -16,3 +16,5 @@ rabbitmq/rabbitmq/*
 cockroachdb/cockroachdb/
 ingress-nginx/ingress-nginx/*
 cloud-native-storage-self-service-manager/*
+influxdb/influxdb2/*
+telegraf/telegraf/

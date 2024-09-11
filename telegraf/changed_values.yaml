@@ -1,0 +1,18 @@
+config:
+  outputs:
+    - influxdb_v2:
+        urls:
+          - "http://influxdb-influxdb2.monitoring.svc.cluster.local:8086"
+        token: "8LYp/RzxuXo9yDuVOEP0dqd1l55pDT2DDCmj"
+        organization: "sztu"
+        bucket: "default"
+  inputs:
+    - vsphere:
+        vcenters: 
+          - "https://<vcenter_hostname>/sdk"
+        username: "administrator@vsphere.local"
+        password: "password_here"
+        insecure_skip_verify: true
+        vm_metric_include:
+          - "cpu.demand.average"
+          - "cpu.idle.summation"
