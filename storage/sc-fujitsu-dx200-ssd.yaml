@@ -1,0 +1,13 @@
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  name: fujitsu-dx200-ssd
+parameters:
+  csi.storage.k8s.io/fstype: ext4
+  datastoreurl: ds:///vmfs/volumes/6647591a-dca7d042-aacc-c4ff1fba68d7/
+  storagepolicyname: Kuber-VMFS
+provisioner: csi.vsphere.vmware.com
+reclaimPolicy: Retain

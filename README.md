@@ -778,6 +778,7 @@ provisioner: csi.vsphere.vmware.com
 allowVolumeExpansion: true # Optional: only applicable to vSphere 7.0U1 and above
 parameters:
   datastoreurl: "ds:///vmfs/volumes/19817ehd87edhn987-h198h2d987h9n"
+  # Должна быть создана заранее в VMWARE - Policies and Profiles - VM Storage Policies
   storagepolicyname: "Kuber-VMFS"
   csi.storage.k8s.io/fstype: ext4
 ```
@@ -1201,3 +1202,35 @@ helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm pull metrics-server/metrics-server --untar
 helm upgrade --install metrics-server metrics-server/ --create-namespace -n metricsserver -f /home/master/projects/kubernetes_install/metrics-server/changed_values.yaml
 ```
+
+## Прописываем DNS для разрешения имен из Windows домена
+
+Сохраняем старый конфиг
+
+```bash
+kubectl get configmap coredns -n kube-system -o yaml > coredns-config.yaml
+```
+
+Удаляем метаданные  
+creationTimestamp  
+resourceVersion  
+uid  
+Также удалена аннотация kubectl.kubernetes.io/last-applied-configuration, так как она будет автоматически обновлена при применении конфигурации.  
+
+Добавляем в конец Corefile данные домена и адрес котроллера домена:
+
+```yaml
+    contoso.local:53 {
+        errors
+        cache 30
+        forward . 192.168.100.1
+    }
+```
+
+Применяем
+
+```bash
+kubectl apply -f /home/appuser/projects/kubernetes_install/dns/coredns-config-new.yaml
+```
+
+Теперь доменные имена будут разрешаться.

@@ -18,3 +18,5 @@ ingress-nginx/ingress-nginx/*
 cloud-native-storage-self-service-manager/*
 influxdb/influxdb2/*
 telegraf/telegraf/
+dns/coredns-config.yaml
+dns/coredns-config-new.yaml

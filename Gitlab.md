@@ -35,6 +35,7 @@ allowVolumeExpansion: true # Optional: only applicable to vSphere 7.0U1 and abov
 reclaimPolicy: Retain
 parameters:
   datastoreurl: "ds:///vmfs/volumes/12312avsihgbliou3ub2i3r9238hbr/"
+  # Должна быть создана заранее в VMWARE - Policies and Profiles - VM Storage Policies
   storagepolicyname: "Kuber-VMFS"
   csi.storage.k8s.io/fstype: ext4
 ```

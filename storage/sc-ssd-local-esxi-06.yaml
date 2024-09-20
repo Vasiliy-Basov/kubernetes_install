@@ -1,7 +1,7 @@
-kind: StorageClass
 apiVersion: storage.k8s.io/v1
+kind: StorageClass
 metadata:
-  name: hdd-local-sztu-esxi-06
+  name: ssd-local-sztu-esxi-06
   annotations:
     storageclass.kubernetes.io/is-default-class: "false"
 provisioner: csi.vsphere.vmware.com
@@ -11,6 +11,7 @@ allowVolumeExpansion: true # Optional: only applicable to vSphere 7.0U1 and abov
 reclaimPolicy: Retain
 # Должна быть создана storagepolicyname заранее в VMWARE - Policies and Profiles - VM Storage Policies
 parameters:
-  datastoreurl: "ds:///vmfs/volumes/609a5210-6f88d68a-f4fe-c4ff1fba6924"
-  storagepolicyname: Kuber-VMFS
   csi.storage.k8s.io/fstype: ext4
+  datastoreurl: ds:///vmfs/volumes/5c66a4b3-3bfa253c-b58f-f86eee838e11/
+  storagepolicyname: Kuber-VMFS
+
