@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: test
+  name: short-app-port
+spec:
+  type: NodePort
+  ports:
+  # Порт для других подов которые хотят получить доступ к этому поду
+  - port: 3000
+    # Порт внутри контейнера куда мы прокидываем NodePort
+    targetPort: 80
+    # Порт который нужно будет вводить клиенту
+    nodePort: 31200
+  # Привязываем сервис к подам у которых есть эти labels:
+  selector: 
+    components: frontend

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: test
+  name: short-app
+  labels:
+    components: frontend
+spec:
+  containers:
+  - name: short-app
+    image: antonlarichev/short-app:latest
+    # порт на котором находится nginx в контейнере
+    ports:
+      - containerPort: 80
+    resources:
+      limits:
+        memory: "64Mi"
+        # 1000м это один процессор
+        cpu: "100m"
