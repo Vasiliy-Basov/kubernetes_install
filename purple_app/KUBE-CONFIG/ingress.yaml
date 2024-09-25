@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: test
+  name: myingress
+  annotations:
+    # Автоматически добавляет базовый URL к ссылкам в ответах от приложения
+    nginx.ingress.kubernetes.io/add-base-url: "true"
+  # labels:
+  #   name: myingress
+spec:
+  # Какой ingress контроллер мы хотим использовать.
+  ingressClassName: nginx
+  # Набор хостов
+  rules:
+  - host: demo.test
+    http:
+      paths:
+      # Тип Prefix означает что все запросы которые начинаются на demo.test/... будут перенаправляться на наш сервис вместо ... может быть все что угодно
+      - pathType: Prefix
+        path: "/"
+        # То куда мы перенаправляем
+        backend:
+          service:
+            # Указываем имя сервиса и порт сервиса куда будет посылаться трафик с запросов которые будут приходить на хост demo.test/
+            name: short-app-clusterip
+            port: 
+              number: 80

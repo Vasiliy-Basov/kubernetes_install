@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: test
+  name: short-app-deployment
+spec:
+  replicas: 1
+  # Выбор нашего шаблона ао labels
+  selector:
+    matchLabels:
+      components: frontend
+  # Шаблон нашего пода labels и matchLabels должны совпадать   
+  template:
+    metadata:
+      labels:
+        components: frontend
+    spec:
+      containers:
+      - name: short-app
+        image: antonlarichev/short-app:v1.0
+        # Всегда стягивать контейнер
+        imagePullPolicy: Always
+        # порт на котором находится nginx в контейнере
+        ports:
+          - containerPort: 80
+        resources:
+          limits:
+            memory: "64Mi"
+            # 1000м это один процессор
+            cpu: "100m"

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: test
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      components: postgres
+  template:
+    metadata:
+      labels:
+        components: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+        - containerPort: 5432
+        # Переменные нужные для postgres, см https://hub.docker.com/_/postgres 
+        env:
+        - name: POSTGRES_DB
+          value: demo
+        - name: POSTGRES_USER
+          value: demo
+        - name: POSTGRES_PASSWORD
+          value: demo
