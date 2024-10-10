@@ -181,15 +181,19 @@ grafana:
   defaultDashboardsTimezone: "Europe/Moscow"
   
   adminPassword: prom-operator
-  # Создаем секрет 
+  # Создаем секрет для basic auth
   # htpasswd -c auth admin
   # kubectl create secret generic admin-basic-auth --from-literal=admin-user=admin --from-file=admin-password=auth -n prometheus-oper
   # adminUser: admin
-  # Authentication через секрет
+  
+  
+  # Authentication через секрет (не basic auth)
+  # Создаем секрет 
+  # kubectl create secret generic grafana-admin --from-literal=admin=admin --from-literal=password=нашпароль -n prometheus-oper
   # admin:
-  #   existingSecret: "admin-basic-auth" 
-  #   userKey: admin-user
-  #   passwordKey: admin-password
+  #   existingSecret: "grafana-admin" 
+  #   userKey: admin
+  #   passwordKey: password
 
   ingress:
     ## If true, Grafana Ingress will be created

@@ -221,3 +221,105 @@ docker push registry.local/library/telegraf:1.32-alpine
 ```bash
 helm upgrade --install telegraf /home/appuser/projects/prometheus/telegraf/telegraf --namespace telegraf --create-namespace -f /home/appuser/projects/prometheus/telegraf/changed_values.yaml
 ```
+
+## How to configure LDAP in kube-prometheus-stack Grafana
+
+1. Создаем файл ldap-toml со следующим содержимым
+
+    ```conf
+    # To troubleshoot and get more log info enable ldap debug logging in grafana.ini
+    # [log]
+    # filters = ldap:debug
+    verbose_logging = true
+
+    [[servers]]
+    # Ldap server host (specify multiple hosts space separated)
+    # We use OpenLDAP but you can use any IP address or external host here
+    host = "contoso.com"
+
+    # Default port is 389 or 636 if use_ssl = true
+    port = 389
+
+    # Set to true if LDAP server supports TLS
+    use_ssl = false 
+
+    # Set to true if connect LDAP server with STARTTLS pattern (create connection in insecure, then upgrade to secure connection with TLS)
+    start_tls = false 
+
+    # set to true if you want to skip SSL cert validation
+    ssl_skip_verify = true 
+
+    # Search user bind dn, Пользователь для подключения к LDAP
+    # bind_dn = "cn=svc-sztu-vmview,ou=SVC,OU=СЗТУ,ou=North-West customs region,dc=regions,dc=eais,dc=customs,dc=ru"
+    bind_dn = "CONTOSO\\svc-admin"
+
+    # Search user bind password
+    bind_password = "пароль"
+
+    # User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
+    # (sAMAccountName=%s): Поиск пользователя по логину, принятому в Active Directory.
+    search_filter = "(sAMAccountName=%s)"
+
+    # An array of base dns to search through
+    search_base_dns = ["dc=contoso,dc=com"]
+
+    #LDAP Group Admin DN
+    group_search_base_dns = ["ou=groups,ou=admins,dc=contoso,dc=com"]
+
+    #LDAP Group search filter
+    group_search_filter = "(member:1.2.840.113556.1.4.1941:=%s)"
+
+    group_search_filter_user_attribute = "dn"
+
+    ### If you use LDAP to authenticate users but don’t use role mapping, and prefer to manually assign organizations and roles, you can use the `skip_org_role_sync` configuration option.
+
+    # Группа пользователи которой получат роль админа
+    [[servers.group_mappings]]
+    group_dn = "CN=admin-group,OU=admins,DC=contoso,DC=com"
+    org_role = "Admin"
+    grafana_admin = true
+
+    # Роль "Viewer" для группы пользователей или для всех
+    [[servers.group_mappings]]
+        group_dn = "*"
+        org_role = "Viewer"
+
+    # Секция определяет соответствие между атрибутами LDAP и полями пользователя в Grafana
+    # Specify names of the LDAP attributes your LDAP uses
+    [servers.attributes]
+    name = "givenName"
+    surname = "sn"
+    username = "cn"
+    member_of = "dn"
+    email =  "email"
+    ```
+
+2. Создаем секрет из этого файла  
+
+    ```bash
+    kubectl create secret generic grafana-ldap-toml --from-file=/grafana-stack-ldap/ldap-toml -n prometheus-stack
+    ```
+
+3. Обновляем changed-values.yaml  
+
+    ```yaml
+    grafana:
+      # Необходимо предварительно создать секрет из файла ldap-toml - grafana-ldap-toml с настройками файла ldap.toml внутри
+      # kubectl create secret generic grafana-ldap-toml --from-file=grafana-stack-ldap/ldap-toml -n prometheus-stack
+      ldap:
+        enabled: true
+        existingSecret: "grafana-ldap-toml"
+      grafana.ini:
+        auth.ldap:
+          enabled: true
+          allow_sign_up: true 
+          config_file: /etc/grafana/ldap.toml
+    ```
+
+4. Обновляем чарт
+
+    ```bash
+    helm upgrade --install prometheus-stack /home/appuser/projects/prometheus/kube-prometheus-stack --namespace prometheus-stack --create-namespace -f /home/appuser/projects/prometheus/kube-prometheus-stack/changed_values.yaml
+    ```
+
+5. Заходим на Grafana и пытаемся зайти под пользователем домена.
