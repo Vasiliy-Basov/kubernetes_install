@@ -26,6 +26,8 @@ global:
     class: nginx
 # !!! Если нужно собирать docker images: runner д.б. запущен с опцией --privileged
 # Предварительно нужно создать gitlab-runner-certs secret см. /kubernetes_install/README.md
+# Если до этого использовался другой домен то нужно перед обновлением чарта удалить два секрета
+# gitlab-wildcard-tls и gitlab-wildcard-tls-chain и только после этого создавать секрет
 gitlab-runner:
   gitlabUrl: https://gitlab.gitlab.local/
   certsSecretName: gitlab-runner-certs
