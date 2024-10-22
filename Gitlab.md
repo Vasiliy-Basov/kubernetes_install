@@ -1,11 +1,12 @@
 # Gitlab Install
 
 ## Change Ingress Options
+
 Посмотреть как называется service gitlab
 
 add --set tcp.22="gitlab/gitlab-gitlab-shell:22"  
 
-https://kubernetes.github.io/ingress-nginx/deploy/
+<https://kubernetes.github.io/ingress-nginx/deploy/>
 
 ```bash
 # Скачать чарт локально
@@ -14,11 +15,13 @@ helm repo update
 helm search repo ingress-nginx
 helm pull ingress-nginx/ingress-nginx --untar
 ```
+
 ```bash
 helm upgrade --install ingress-nginx /home/appuser/projects/kubernetes_install/ingress-nginx/ingress-nginx/ --namespace ingress-nginx --create-namespace -f /home/appuser/projects/kubernetes_install/ingress-nginx/nginx-ingress-changed.yaml
 ```
 
 ## Set reclaim Policy to Storage Class
+
 Set reclaimPolicy to Retain on Storage Class
 
 ```yaml
@@ -41,12 +44,13 @@ parameters:
 ```
 
 ```bash
-# Download Chart Localy
+# Download Chart Locally
 helm pull gitlab/gitlab --untar
 # Create values_changed.yaml
 ```
+
 ```yaml
-# Need to set certmanager-issuer.email before templating
+# Need to set certmanager-issuer.email before template
 certmanager-issuer:
   email: a@google.com
 
@@ -214,7 +218,7 @@ nerdctl pull registry.gitlab.com/gitlab-org/build/cng/gitlab-kas:v16.6.0
 nerdctl tag registry.gitlab.com/gitlab-org/build/cng/gitlab-kas:v16.6.0 registry.local/gitlab-org/build/cng/gitlab-kas:v16.6.0
 nerdctl push --insecure-registry registry.local/gitlab-org/build/cng/gitlab-kas:v16.6.0
 
-# Create secret for self signed sertificate for Gitlab Runner
+# Create secret for self signed certificate for Gitlab Runner
 # Если до этого использовался другой домен то нужно перед обновлением чарта удалить два секрета
 # gitlab-wildcard-tls и gitlab-wildcard-tls-chain и только после этого создавать секрет
 kubectl get secret gitlab-wildcard-tls -n gitlab --template='{{ index .data "tls.crt" }}' | base64 -d > gitlab.crt
@@ -226,7 +230,6 @@ helm upgrade --install gitlab gitlab/ --timeout 600s --create-namespace -n gitla
 # Get Gitlab initial password
 kubectl get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' -n gitlab | base64 --decode ; echo
 ```
-
 
 ```bash
 # Добавить сертификат в доверенные (на клиентской машине) в случае самоподписанного сертификата у сервера gitlab для того чтобы не было ошибки 
