@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# gitlab-runner data directory
+# Определение путей к конфигурационным файлам
+DATA_DIR="/etc/gitlab-runner"
+# Если CONFIG_FILE не задан через переменную окружения, использует значение по умолчанию
+CONFIG_FILE=${CONFIG_FILE:-$DATA_DIR/config.toml}
+
+# custom certificate authority path
+# Пути к сертификатам
+CA_CERTIFICATES_PATH=${CA_CERTIFICATES_PATH:-$DATA_DIR/certs/ca.crt} # Путь к пользовательскому сертификату
+LOCAL_CA_PATH="/usr/local/share/ca-certificates/ca.crt" # Системный путь к сертификату
+
+# Функция обновления сертификатов
+update_ca() {
+  echo "Updating CA certificates..."
+  # Копируем пользовательский сертификат в системную директорию
+  cp "${CA_CERTIFICATES_PATH}" "${LOCAL_CA_PATH}"
+  # Обновляем системные сертификаты
+  update-ca-certificates --fresh >/dev/null
+}
+
+# Проверяем наличие пользовательского сертификата
+if [ -f "${CA_CERTIFICATES_PATH}" ]; then
+  # Сравниваем текущий и новый сертификат
+  # Если они различаются (или текущего нет), обновляем сертификаты
+  # update the ca if the custom ca is different than the current
+  cmp --silent "${CA_CERTIFICATES_PATH}" "${LOCAL_CA_PATH}" || update_ca
+fi
+
+# Запускаем gitlab-runner со всеми переданными аргументами
+# launch gitlab-runner passing all arguments
+# эти аргументы берутся из команды CMD в Dockerfile или из аргументов, которые вы передаете при запуске контейнера
+# docker run gitlab-runner В этом случае: "$@" получит аргументы из CMD
+# итоговая команда будет exec gitlab-runner run --user=gitlab-runner --working-directory=/home/gitlab-runner
+exec gitlab-runner "$@"

@@ -1,0 +1,68 @@
+# Аргумент который может быть переопределен, BASE_IMAGE - имя переменной, значение по умолчанию
+ARG BASE_IMAGE=ubuntu:22.04
+
+# Определяем базовый образ и название этапа (builder)
+FROM $BASE_IMAGE AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Установка базовых зависимостей
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        git git-lfs \
+        wget \
+        tzdata \
+        openssh-client \
+        smbclient \
+        python3 \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        libssl-dev \
+        libffi-dev \
+        python3-dev \
+        dumb-init \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка Python пакетов
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    python3 -m pip install --no-cache-dir smbprotocol
+
+# Установка GitLab Runner (пример для amd64)
+COPY gitlab-runner_amd64.deb /tmp/
+RUN dpkg -i /tmp/gitlab-runner_amd64.deb && \
+    apt-get update && \
+    apt-get -f install -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm /tmp/gitlab-runner_amd64.deb && \
+    rm -rf /etc/gitlab-runner/.runner_system_id
+
+FROM $BASE_IMAGE
+
+# Копируем все файлы из предыдущей стадии сборки builder в текущий контейнер
+# Многоступенчатая сборка помогает уменьшить размер финального образа
+COPY --from=builder / /
+# Копирует файл entrypoint из текущего контекста сборки в корневую директорию контейнера
+COPY --chmod=755 entrypoint /
+
+# Создание рабочих директорий
+RUN mkdir -p /etc/gitlab-runner /home/gitlab-runner && \
+    chown -R gitlab-runner:gitlab-runner /home/gitlab-runner
+
+# Настройка сигнала остановки позволяет процессу корректно завершить работу
+STOPSIGNAL SIGQUIT
+# При запуске контейнера docker либо автоматически создает тома либо можем указать явно при запуске куда монтировать 
+# docker run -v /path/on/host/etc/gitlab-runner:/etc/gitlab-runner -v /path/on/host/home/gitlab-runner:/home/gitlab-runner my-gitlab-runner-image
+VOLUME ["/etc/gitlab-runner", "/home/gitlab-runner"]
+# ENTRYPOINT какой процесс будет запускаться при старте контейнера (Выполняется всегда)
+# dumb-init используется для того, чтобы управлять процессами и сигналами в контейнере корректно, выполняя роль простого инициализатора
+# /entrypoint это скрипт или исполняемый файл (который мы предварительно скопировали), который запускается сразу после старта dumb-init
+ENTRYPOINT ["/usr/bin/dumb-init", "/entrypoint"]
+# CMD может быть переопределена
+# run - команда для запуска runner'а в режиме службы
+# --user=gitlab-runner - указывает, от какого пользователя запускать процесс
+# --working-directory=/home/gitlab-runner - определяет рабочую директорию
+CMD ["run", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"]

@@ -20,3 +20,4 @@ influxdb/influxdb2/*
 telegraf/telegraf/
 dns/coredns-config.yaml
 dns/coredns-config-new.yaml
+gitlab/runner/gitlab-runner_amd64.deb
