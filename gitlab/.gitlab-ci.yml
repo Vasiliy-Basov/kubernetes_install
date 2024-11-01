@@ -1,0 +1,66 @@
+stages:
+  - test
+  - deploy
+
+variables:
+  SMB_SERVER: "//sztu-osvts-01.regions.eais.customs.ru/C$"
+  SMB_PATH: "temp/testgitlab"
+  WORKDIR: $CI_PROJECT_DIR/helpdesk-test
+
+test_smbclient:
+  stage: test
+  script:
+    - echo "Проверяем наличие smbclient..."
+    - smbclient --version
+    - echo "Проверка выполнена успешно!"
+  tags:
+    - main
+
+# Проверка наличия необходимых переменных
+.validate_vars: &validate_vars |
+  for var in SERVER_USER SERVER_PASSWORD SMB_SERVER SMB_PATH; do
+    if [ -z "${!var}" ]; then
+      echo "Error: $var is not set"
+      exit 1
+    fi
+  done
+
+.test_connection: &test_connection |
+  if ! smbclient $SMB_SERVER -U $SERVER_USER%"$SERVER_PASSWORD" -c "ls" > /dev/null 2>&1; then
+    echo "Error: Cannot connect to SMB share"
+    exit 1
+  fi
+
+.test_workdir: &test_workdir |
+  if [ ! -d "$WORKDIR" ]; then
+    echo "Error: Directory $WORKDIR does not exist"
+    echo "Current directory structure:"
+    ls -la $CI_PROJECT_DIR
+    exit 1
+  fi
+
+deploy:
+  stage: deploy
+  script:
+    - *validate_vars
+    - *test_connection
+    - *test_workdir
+    - |
+      echo "Configuration:"
+      echo "- Working directory: $WORKDIR"
+      echo "- SMB server: $SMB_SERVER"
+      echo "- SMB path: $SMB_PATH"
+      echo "- SMB user: $SERVER_USER"
+    - ORACLE_PASSWORD=$(printf '%s\n' "$ORACLE_PASSWORD" | sed 's/[\/&]/\\&/g')
+    - G_CRYPTO_MASTER_SALT=$(printf '%s\n' "$G_CRYPTO_MASTER_SALT" | sed 's/[\/&]/\\&/g')
+    - LDAP_HELPDESK_PASSWORD=$(printf '%s\n' "$LDAP_HELPDESK_PASSWORD" | sed 's/[\/&]/\\&/g')
+    - sed "s/\${ORACLE_PASSWORD}/$ORACLE_PASSWORD/g; s/\${G_CRYPTO_MASTER_SALT}/$G_CRYPTO_MASTER_SALT/g; s/\${LDAP_HELPDESK_PASSWORD}/$LDAP_HELPDESK_PASSWORD/g" "$CI_PROJECT_DIR/helpdesk-test/config/config_inc.php.template" > "$CI_PROJECT_DIR/helpdesk-test/config/config_inc.php"
+    - cd $WORKDIR
+    - ls -la
+    - smbclient $SMB_SERVER -U $SERVER_USER%"$SERVER_PASSWORD" -c "cd $SMB_PATH; prompt; recurse; mput *"
+  tags:
+    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_REF_PROTECTED == "true"
+      when: on_success
+    - when: never
