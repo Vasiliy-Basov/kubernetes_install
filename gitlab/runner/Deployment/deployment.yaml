@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-runner
+  namespace: gitlab-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-runner
+  template:
+    metadata:
+      labels:
+        app: gitlab-runner
+    spec:
+      serviceAccountName: gitlab-runner-sa
+      containers:
+      - name: gitlab-runner
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "100m"
+        image: registry.local/library/gitlab-runner-custom:v1.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: RUNNER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: gitlab-runner-secret
+              key: runner-registration-token # Ключ в Secret
+        volumeMounts:
+        - name: config
+          mountPath: /etc/gitlab-runner
+          readOnly: true
+        - name: gitlab-cert
+          mountPath: /usr/local/share/ca-certificates/gitlab.crt
+          subPath: ca.crt
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "update-ca-certificates"]
+      volumes:
+      - name: config
+        configMap:
+          name: gitlab-runner-config
+      - name: gitlab-cert
+        configMap:
+          name: gitlab-ca-cert

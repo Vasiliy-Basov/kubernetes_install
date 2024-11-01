@@ -1,0 +1,38 @@
+# values.yaml
+image:
+  repository: registry.local/library/gitlab-runner-custom
+  tag: v1.0
+  pullPolicy: IfNotPresent
+
+# GitLab Runner конфигурация
+gitlabUrl: "https://gitlab.gitlab.local"
+runnerRegistrationToken: "YOUR-REGISTRATION-TOKEN"
+
+# Ресурсы для runner
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Конфигурация для concurrent jobs
+concurrent: 10
+
+# Настройки для каждого runner
+runners:
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        image = "ubuntu:22.04"
+        privileged = false
+      [runners.cache]
+        Type = "s3"
+        Shared = true
+
+# Настройки persistent volume
+persistence:
+  enabled: true
+  storageClass: "standard"
+  size: 10Gi

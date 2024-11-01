@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-runner-config
+  namespace: gitlab-runner
+data:
+  config.toml: |
+    concurrent = 10
+    check_interval = 30
+    
+    [[runners]]
+      name = "Kubernetes Runner"
+      url = "https://gitlab.gitlab.local"  # Замените на ваш GitLab URL
+      token = "123123123dqwdqwdq" # Переменная берется из deployment
+      tls-ca-file = "/etc/gitlab-runner/certs/ca.crt" # В случае самоподписанного сертификата должны добавить его в образ см dockerfile
+      executor = "kubernetes"
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "registry.local/library/gitlab-runner-custom:v1.1"
+        privileged = true
+        service_account = "gitlab-runner-sa"
+        # Настройки для containerd
+        image_pull_policy = ["IfNotPresent"]
+        # Если нужны дополнительные настройки для подов, которые будут запускать jobs
+        pod_labels = ["app=gitlab-runner-job"]
+        poll_timeout = 600
+        cpu_request = "1"
+        service_cpu_request = "200m"
+        helper_image = "registry.local/gitlab-runner-helper:v17.5.1"

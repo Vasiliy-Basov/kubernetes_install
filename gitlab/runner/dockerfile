@@ -27,6 +27,12 @@ RUN apt-get update -y && \
         dumb-init \
     && rm -rf /var/lib/apt/lists/*
 
+# Добавляем здесь сертификат и обновляем сертификаты
+# В случае самоподписанного сертификата получаем его так
+# openssl s_client -showcerts -connect gitlab.sztu-kubs-01.regions.eais.customs.ru:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > ca.crt
+COPY ca.crt /usr/local/share/ca-certificates/gitlab.crt
+RUN update-ca-certificates
+
 # Установка Python пакетов
 RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir smbprotocol

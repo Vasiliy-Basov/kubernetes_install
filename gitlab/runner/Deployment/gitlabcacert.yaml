@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitlab-ca-cert
+  namespace: gitlab-runner
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+
+    -----END CERTIFICATE-----

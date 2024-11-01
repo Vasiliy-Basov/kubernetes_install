@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  config.toml: |
+    concurrent = {{ .Values.concurrent }}
+    check_interval = 30
+    
+    [[runners]]
+      name = "Kubernetes Runner"
+      url = {{ .Values.gitlabUrl | quote }}
+      token = {{ .Values.runnerRegistrationToken | quote }}
+      executor = "kubernetes"
+      [runners.kubernetes]
+        image = {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        {{- with .Values.runners.config }}
+        {{- . | nindent 8 }}
+        {{- end }}
