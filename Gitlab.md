@@ -422,3 +422,32 @@ gitlab-runner:
 ```bash
 helm upgrade --install gitlab gitlab/ --timeout 600s --create-namespace -n gitlab -f /home/appuser/projects/prometheus/gitlab/values_changed.yaml
 ```
+
+### Ldap Integration
+
+```yaml
+global:
+  appConfig:
+    ldap:
+      servers:
+        main:
+          label: 'LDAP'
+          host: 'abc.contoso.com'
+          port: 389
+          uid: 'sAMAccountName'
+          bind_dn: 'CN=admin,OU=admin,DC=abc,DC=contoso,DC=com'
+          # Создаем секрет kubectl create secret generic ldap-pas --from-literal=password='your-password' -n gitlab
+          password:
+            secret: ldap-pas
+            key: password
+          encryption: 'plain'
+          verify_certificates: false
+          timeout: 10
+          active_directory: true
+          user_filter: '(memberOf=CN=gitlabgroup,OU=admins,DC=abc,DC=contoso,DC=com)'
+          base: 'dc=abc,dc=contoso,dc=com'
+          lowercase_usernames: false
+          retry_empty_result_with_codes: [80]
+          allow_username_or_email_login: false
+          block_auto_created_users: false
+```
