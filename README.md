@@ -754,7 +754,7 @@ metadata:
 stringData:
 ```
 
-можно оставить старый пароль но нужно его ввести.
+Можно оставить старый пароль но нужно его ввести. Меняем пароль в vCenter Administration - Single Sign On - Edit - Вводим тот же пароль.
 
 ## Использование vSphere Container Storage Plug-in
 
@@ -762,7 +762,7 @@ stringData:
 
 Создаем VM Storage Policies в vCenter
 
-Policies and Profiles - VM Storage Policies - Create   
+Policies and Profiles - VM Storage Policies - Create  
 Имя - Enable rules for "VMFS" storage - выбираем VMFS Rules  
 
 Создаем Storage class
@@ -1236,3 +1236,103 @@ kubectl apply -f /home/appuser/projects/kubernetes_install/dns/coredns-config-ne
 ```
 
 Теперь доменные имена будут разрешаться.
+
+## Сертификаты
+
+Error  
+Сертификаты выдаются на один год и раз в год их нужно обновлять иначе кластер развалится, если не делался upgrade control plane.
+
+Обновление вручную, нужно сделать на каждой master ноде на worker ничего не надо делать:
+
+```bash
+# Проверка сертификатов
+kubeadm certs check-expiration
+# Обновление сетификатов
+kubeadm certs renew all
+# Посмотреть сертификаты
+cd /etc/kubernetes/ssl
+# Обновить конфиг для подключения
+cp /root/.kube/config /root/.kube/.old-$(date --iso)-config 
+cp /etc/kubernetes/admin.conf /root/.kube/config
+```
+
+Также необходимо обновить поды control plane.
+
+```bash
+# Нужно удалить (переместить) yaml файлы по пути /etc/manifests/ на 30-40 сек и подождать пока удалятся соответствующие поды, потом вернуть их назад.
+cp /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml.backup
+cp /etc/kubernetes/manifests/kube-controller-manager.yaml /etc/kubernetes/manifests/kube-controller-manager.yaml.backup
+cp /etc/kubernetes/manifests/kube-scheduler.yaml /etc/kubernetes/manifests/kube-scheduler.yaml.backup
+cp /etc/kubernetes/manifests/kube-vip.yml /etc/kubernetes/manifests/kube-vip.yml.backup
+
+cp /etc/kubernetes/manifests/kube-apiserver.yaml.backup /etc/kubernetes/manifests/kube-apiserver.yaml
+cp /etc/kubernetes/manifests/kube-controller-manager.yaml.backup /etc/kubernetes/manifests/kube-controller-manager.yaml
+cp /etc/kubernetes/manifests/kube-scheduler.yaml. /etc/kubernetes/manifests/kube-scheduler.yaml
+cp /etc/kubernetes/manifests/kube-vip.yml.backup /etc/kubernetes/manifests/kube-vip.yml
+
+# Перезапустить kubelet
+systemctl restart kubelet
+```
+
+### Настройка автоматического обновления сертификатов  
+
+```bash
+# Создаем скрипт ./kubernetes_install/script/k8s-cert-renewal.sh
+nano /root/k8s-cert-renewal.sh
+chmod 0700 /root/k8s-cert-renewal.sh
+```
+
+```bash
+# Делаем службу для выполнения по расписанию (Один раз в 350 дней)
+
+# 1. Создаём service файл
+
+cat << 'EOF' > /etc/systemd/system/k8s-cert-renewal.service
+[Unit]
+Description=Kubernetes Certificate Renewal Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/k8s-cert-renewal.sh
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 2. Создаём timer файл
+
+cat << 'EOF' > /etc/systemd/system/k8s-cert-renewal.timer
+[Unit]
+Description=Run Kubernetes Certificate Renewal every 350 days
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=350d
+AccuracySec=1h
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target
+EOF
+
+# 3. Перезагружаем конфигурацию systemd
+systemctl daemon-reload
+# 4. Включаем и запускаем таймер (Скрипт может запуститься, если сертификаты не нужно обновлять то он ничего не сделает)
+systemctl enable k8s-cert-renewal.timer
+systemctl start k8s-cert-renewal.timer
+# Проверить статус таймера
+systemctl status k8s-cert-renewal.timer
+# Проверить статус сервиса
+systemctl status k8s-cert-renewal.service
+# Посмотреть когда таймер будет запущен следующий раз
+systemctl list-timers k8s-cert-renewal.timer
+# Проверить логи сервиса
+journalctl -u k8s-cert-renewal.service
+# Запустить сервис вручную для тестирования
+systemctl start k8s-cert-renewal.service
+# Если вам нужно изменить интервал или другие параметры, просто отредактируйте файл таймера и выполните:
+systemctl daemon-reload
+systemctl restart k8s-cert-renewal.timer
+```
